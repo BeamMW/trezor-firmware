@@ -213,5 +213,18 @@
         },
         "wallet": {},
         "blockchain_link": {}
+    },
+    {
+        "name": "BEAM",
+        "shortcut": "BEAM",
+        "slip44": 0,
+        "curve": "secp256k1",
+        "decimals": 8,
+        "links": {
+            "Homepage": "https://beam.mw",
+            "Github": "https://github.com/beammw/beam"
+        },
+        "wallet": {},
+        "blockchain_link": {}
     }
 ]
