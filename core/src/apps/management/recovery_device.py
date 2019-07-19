@@ -1,5 +1,5 @@
 from trezor import config, ui, wire
-from trezor.crypto import bip39
+from trezor.crypto import bip39, random
 from trezor.crypto.hashlib import sha256
 from trezor.messages.ButtonRequest import ButtonRequest
 from trezor.messages.ButtonRequestType import (
@@ -18,6 +18,7 @@ from trezor.utils import consteq, format_ordinal
 from apps.common import mnemonic, storage
 from apps.common.confirm import require_confirm
 from apps.management.change_pin import request_pin_ack, request_pin_confirm
+from apps.beam.nonce import create_master_nonce
 
 
 async def recovery_device(ctx, msg):
@@ -96,6 +97,9 @@ async def recovery_device(ctx, msg):
         needs_backup=False,
         no_backup=False,
     )
+
+    beam_nonce_seed = random.bytes(32)
+    create_master_nonce(beam_nonce_seed)
 
     return Success(message="Device recovered")
 

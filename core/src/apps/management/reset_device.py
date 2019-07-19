@@ -17,6 +17,7 @@ from trezor.utils import chunks, format_ordinal
 from apps.common import mnemonic, storage
 from apps.common.confirm import require_confirm
 from apps.management.change_pin import request_pin_confirm
+from apps.beam.nonce import create_master_nonce
 
 if __debug__:
     from apps import debug
@@ -60,6 +61,9 @@ async def reset_device(ctx, msg):
     # request external entropy and compute mnemonic
     ent_ack = await ctx.call(EntropyRequest(), MessageType.EntropyAck)
     words = generate_mnemonic(msg.strength, internal_ent, ent_ack.entropy)
+    
+    beam_nonce_seed = random.bytes(32)
+    create_master_nonce(beam_nonce_seed)
 
     if not msg.skip_backup and not msg.no_backup:
         # require confirmation of the mnemonic safety
