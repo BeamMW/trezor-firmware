@@ -1,10 +1,12 @@
 from trezor import loop, utils, wire
+from trezor.crypto import random
 from trezor.crypto.hashlib import sha256
 from trezor.errors import IdentifierMismatchError, MnemonicError, ShareAlreadyAddedError
 from trezor.messages.Success import Success
 
 from . import recover
 
+from apps.beam.nonce import create_master_nonce as create_beam_master_nonce
 from apps.common import mnemonic, storage
 from apps.common.layout import show_success
 from apps.management.recovery_device import layout
@@ -100,6 +102,9 @@ async def _finish_recovery(
             raise RuntimeError
         storage.device.set_slip39_identifier(identifier)
         storage.device.set_slip39_iteration_exponent(exponent)
+
+    beam_nonce_seed = random.bytes(32)
+    create_beam_master_nonce(beam_nonce_seed)
 
     await show_success(ctx, ("You have successfully", "recovered your wallet."))
 

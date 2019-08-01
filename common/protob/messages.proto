@@ -237,4 +237,20 @@ enum MessageType {
     MessageType_BinanceOrderMsg = 707 [(wire_in) = true];
     MessageType_BinanceCancelMsg = 708 [(wire_in) = true];
     MessageType_BinanceSignedTx = 709 [(wire_out) = true];
+
+    // Beam
+    MessageType_BeamSignMessage = 802 [(wire_in) = true];
+    MessageType_BeamSignature = 803 [(wire_out) = true];
+    MessageType_BeamVerifyMessage = 804 [(wire_in) = true];
+    MessageType_BeamGetPublicKey = 805 [(wire_in) = true];
+    MessageType_BeamGetOwnerKey = 807 [(wire_in) = true];
+    MessageType_BeamOwnerKey = 808 [(wire_out) = true];
+    MessageType_BeamGenerateKey = 809 [(wire_in) = true];
+    MessageType_BeamGenerateNonce = 810 [(wire_in) = true];
+    MessageType_BeamECCPoint = 811 [(wire_out) = true];
+    MessageType_BeamGenerateRangeproof = 812 [(wire_in) = true];
+    MessageType_BeamRangeproofData = 813 [(wire_out) = true];
+    MessageType_BeamSignTransaction = 814 [(wire_in) = true];
+    MessageType_BeamSignedTransaction = 815 [(wire_out) = true];
+    MessageType_BeamGetNoncePublic = 816 [(wire_in) = true];
 }

@@ -1,5 +1,6 @@
 from trezorcrypto import (  # noqa: F401
     aes,
+    beam,
     bip32,
     bip39,
     chacha20poly1305,
