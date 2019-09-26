@@ -1,4 +1,5 @@
 import gc
+
 from trezor.messages import ButtonRequestType
 from trezor.messages.BeamECCPoint import BeamECCPoint
 

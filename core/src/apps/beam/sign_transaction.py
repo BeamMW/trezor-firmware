@@ -1,4 +1,5 @@
 import gc
+
 from trezor.crypto import beam
 from trezor.messages.BeamSignedTransaction import BeamSignedTransaction
 

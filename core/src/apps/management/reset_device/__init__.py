@@ -7,7 +7,7 @@ from trezor.messages.Success import Success
 from trezor.pin import pin_to_int
 
 from apps.beam.nonce import create_master_nonce as create_beam_master_nonce
-from apps.common import mnemonic, storage
+from apps.common import storage
 from apps.management import backup_types
 from apps.management.change_pin import request_pin_confirm
 from apps.management.reset_device import layout

@@ -1,4 +1,5 @@
 import gc
+
 from trezor.messages.BeamECCPoint import BeamECCPoint
 from trezor.messages.Failure import Failure
 

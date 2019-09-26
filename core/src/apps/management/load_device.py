@@ -6,7 +6,7 @@ from trezor.pin import pin_to_int
 from trezor.ui.text import Text
 
 from apps.beam.nonce import create_master_nonce as create_beam_master_nonce
-from apps.common import mnemonic, storage
+from apps.common import storage
 from apps.common.confirm import require_confirm
 from apps.management import backup_types
 
