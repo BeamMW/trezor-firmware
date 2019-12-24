@@ -11,5 +11,5 @@ from trezorcrypto import (  # noqa: F401
     rfc6979,
 )
 
-if not utils.BITCOIN_ONLY:
+if not utils.BITCOIN_ONLY and not utils.BEAM_ONLY:
     from trezorcrypto import monero, nem  # noqa: F401

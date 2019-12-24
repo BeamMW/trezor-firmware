@@ -2,6 +2,8 @@ import gc
 import sys
 from trezorutils import (  # type: ignore[attr-defined] # noqa: F401
     BITCOIN_ONLY,
+    BEAM_ONLY,
+    ENABLE_BEAM,
     EMULATOR,
     GITREV,
     MODEL,

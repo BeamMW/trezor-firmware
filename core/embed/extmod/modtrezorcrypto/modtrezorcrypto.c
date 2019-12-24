@@ -26,7 +26,6 @@
 #if MICROPY_PY_TREZORCRYPTO
 
 #include "modtrezorcrypto-aes.h"
-#include "modtrezorcrypto-beam.h"
 #include "modtrezorcrypto-bip32.h"
 #include "modtrezorcrypto-bip39.h"
 #include "modtrezorcrypto-blake256.h"
@@ -50,16 +49,23 @@
 #include "modtrezorcrypto-sha512.h"
 #include "modtrezorcrypto-shamir.h"
 #include "modtrezorcrypto-slip39.h"
-#if !BITCOIN_ONLY
+#if !BITCOIN_ONLY && !BEAM_ONLY
 #include "modtrezorcrypto-monero.h"
 #include "modtrezorcrypto-nem.h"
+#endif
+#if !BITCOIN_ONLY
 #include "modtrezorcrypto-secp256k1_zkp.h"
+#endif
+#if ENABLE_BEAM
+#include "modtrezorcrypto-beam.h"
 #endif
 
 STATIC const mp_rom_map_elem_t mp_module_trezorcrypto_globals_table[] = {
     {MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_trezorcrypto)},
     {MP_ROM_QSTR(MP_QSTR_aes), MP_ROM_PTR(&mod_trezorcrypto_AES_type)},
+#if !BITCOIN_ONLY && ENABLE_BEAM
     {MP_ROM_QSTR(MP_QSTR_beam), MP_ROM_PTR(&mod_trezorcrypto_beam_module)},
+#endif
     {MP_ROM_QSTR(MP_QSTR_bip32), MP_ROM_PTR(&mod_trezorcrypto_bip32_module)},
     {MP_ROM_QSTR(MP_QSTR_bip39), MP_ROM_PTR(&mod_trezorcrypto_bip39_module)},
     {MP_ROM_QSTR(MP_QSTR_blake256),
@@ -73,14 +79,14 @@ STATIC const mp_rom_map_elem_t mp_module_trezorcrypto_globals_table[] = {
      MP_ROM_PTR(&mod_trezorcrypto_curve25519_module)},
     {MP_ROM_QSTR(MP_QSTR_ed25519),
      MP_ROM_PTR(&mod_trezorcrypto_ed25519_module)},
-#if !BITCOIN_ONLY
+#if !BITCOIN_ONLY && !BEAM_ONLY
     {MP_ROM_QSTR(MP_QSTR_monero), MP_ROM_PTR(&mod_trezorcrypto_monero_module)},
 #endif
     {MP_ROM_QSTR(MP_QSTR_nist256p1),
      MP_ROM_PTR(&mod_trezorcrypto_nist256p1_module)},
     {MP_ROM_QSTR(MP_QSTR_groestl512),
      MP_ROM_PTR(&mod_trezorcrypto_Groestl512_type)},
-#if !BITCOIN_ONLY
+#if !BITCOIN_ONLY && !BEAM_ONLY
     {MP_ROM_QSTR(MP_QSTR_nem), MP_ROM_PTR(&mod_trezorcrypto_nem_module)},
 #endif
     {MP_ROM_QSTR(MP_QSTR_pbkdf2), MP_ROM_PTR(&mod_trezorcrypto_Pbkdf2_type)},

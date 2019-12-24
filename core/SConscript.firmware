@@ -3,13 +3,17 @@
 import os
 
 BITCOIN_ONLY = ARGUMENTS.get('BITCOIN_ONLY', '0')
-EVERYTHING = BITCOIN_ONLY != '1'
+BEAM_ONLY = ARGUMENTS.get('BEAM_ONLY', '1')
+ENABLE_BEAM = ARGUMENTS.get('ENABLE_BEAM', '1')
+if BEAM_ONLY == '1':
+    ENABLE_BEAM = '1'
+EVERYTHING = BITCOIN_ONLY != '1' and BEAM_ONLY != '1'
 
 CCFLAGS_MOD = ''
 CPPPATH_MOD = []
 CPPDEFINES_MOD = []
 SOURCE_MOD = []
-if EVERYTHING:
+if EVERYTHING or BEAM_ONLY:
     SOURCE_MOD_SECP256K1_ZKP = []
 
 PYOPT = ARGUMENTS.get('PYOPT', '1')
@@ -36,7 +40,7 @@ CPPDEFINES_MOD += [
     'AES_192',
     'RAND_PLATFORM_INDEPENDENT',
     ('USE_KECCAK', '1'),
-    ('USE_BEAM', '1' if EVERYTHING else '0'),
+    ('USE_BEAM', '1' if EVERYTHING or ENABLE_BEAM == '1' else '0'),
     ('USE_ETHEREUM', '1' if EVERYTHING else '0'),
     ('USE_MONERO', '1' if EVERYTHING else '0'),
     ('USE_CARDANO', '1' if EVERYTHING else '0'),
@@ -54,19 +58,6 @@ SOURCE_MOD += [
     'vendor/trezor-crypto/aes/aestab.c',
     'vendor/trezor-crypto/base32.c',
     'vendor/trezor-crypto/base58.c',
-    'vendor/trezor-crypto/beam/definitions_ipp.c',
-    'vendor/trezor-crypto/beam/definitions.c',
-    'vendor/trezor-crypto/beam/beam.c',
-    'vendor/trezor-crypto/beam/functions.c',
-    'vendor/trezor-crypto/beam/internal.c',
-    'vendor/trezor-crypto/beam/misc.c',
-    'vendor/trezor-crypto/beam/rangeproof.c',
-    'vendor/trezor-crypto/beam/oracle.c',
-    'vendor/trezor-crypto/beam/inner_product.c',
-    'vendor/trezor-crypto/beam/multi_mac.c',
-    'vendor/trezor-crypto/beam/nonce_generator.c',
-    'vendor/trezor-crypto/beam/kernel.c',
-    'vendor/trezor-crypto/beam/lib/vec.c',
     'vendor/trezor-crypto/bignum.c',
     'vendor/trezor-crypto/bip32.c',
     'vendor/trezor-crypto/bip39.c',
@@ -112,9 +103,25 @@ if EVERYTHING:
         'vendor/trezor-crypto/monero/serialize.c',
         'vendor/trezor-crypto/monero/xmr.c',
     ]
+if ENABLE_BEAM == '1':
+    SOURCE_MOD += [
+        'vendor/trezor-crypto/beam/definitions_ipp.c',
+        'vendor/trezor-crypto/beam/definitions.c',
+        'vendor/trezor-crypto/beam/beam.c',
+        'vendor/trezor-crypto/beam/functions.c',
+        'vendor/trezor-crypto/beam/internal.c',
+        'vendor/trezor-crypto/beam/misc.c',
+        'vendor/trezor-crypto/beam/rangeproof.c',
+        'vendor/trezor-crypto/beam/oracle.c',
+        'vendor/trezor-crypto/beam/inner_product.c',
+        'vendor/trezor-crypto/beam/multi_mac.c',
+        'vendor/trezor-crypto/beam/nonce_generator.c',
+        'vendor/trezor-crypto/beam/kernel.c',
+        'vendor/trezor-crypto/beam/lib/vec.c',
+    ]
 
 # libsecp256k1-zkp
-if EVERYTHING:
+if EVERYTHING or ENABLE_BEAM == '1':
     CPPPATH_MOD += [
         'vendor/secp256k1-zkp',
         'vendor/secp256k1-zkp/src',
@@ -346,7 +353,7 @@ SOURCE_TREZORHAL = [
 
 SOURCE_QSTR = SOURCE_MOD + SOURCE_MICROPYTHON + SOURCE_MICROPYTHON_SPEED
 
-env = Environment(ENV=os.environ, CFLAGS='%s -DPRODUCTION=%s -DPYOPT=%s -DBITCOIN_ONLY=%s' % (ARGUMENTS.get('CFLAGS', ''), ARGUMENTS.get('PRODUCTION', '0'), PYOPT, BITCOIN_ONLY))
+env = Environment(ENV=os.environ, CFLAGS='%s -DPRODUCTION=%s -DPYOPT=%s -DBITCOIN_ONLY=%s -DBEAM_ONLY=%s -DENABLE_BEAM=%s' % (ARGUMENTS.get('CFLAGS', ''), ARGUMENTS.get('PRODUCTION', '0'), PYOPT, BITCOIN_ONLY, BEAM_ONLY, ENABLE_BEAM))
 
 env.Tool('micropython')
 
@@ -492,10 +499,10 @@ if FROZEN:
         ])
     )
 
-    if EVERYTHING:
+    if ENABLE_BEAM:
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/beam/*.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'trezor/messages/Beam*.py'))
-
+    if EVERYTHING and BEAM_ONLY != '1':
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/binance/*.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'trezor/messages/Binance*.py'))
 
@@ -549,7 +556,7 @@ if FROZEN:
 # static secp256-zkp ecmult context
 #
 
-if EVERYTHING:
+if EVERYTHING or ENABLE_BEAM == '1':
     host_env = Environment(ENV=os.environ)
     host_env.Replace(
         CC=os.getenv('CC_FOR_BUILD') or 'gcc',
@@ -572,7 +579,7 @@ if EVERYTHING:
 
 obj_program = []
 obj_program.extend(env.Object(source=SOURCE_MOD))
-if EVERYTHING:
+if EVERYTHING or ENABLE_BEAM == '1':
     obj_program.extend(env.Object(source=SOURCE_MOD_SECP256K1_ZKP, CCFLAGS='$CCFLAGS -Wno-unused-function'))
 obj_program.extend(env.Object(source=SOURCE_FIRMWARE))
 obj_program.extend(env.Object(source=SOURCE_MICROPYTHON))
@@ -601,7 +608,7 @@ obj_program.extend(
         ' $SOURCE $TARGET', ))
 
 env.Depends(obj_program, qstr_generated)
-if EVERYTHING:
+if EVERYTHING or ENABLE_BEAM == '1':
     env.Depends(obj_program, secp256k1_zkp_ecmult_static_context)
 
 program_elf = env.Command(

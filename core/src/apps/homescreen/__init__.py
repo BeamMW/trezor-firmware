@@ -42,7 +42,7 @@ def get_features() -> Features:
     f.flags = storage.device.get_flags()
     f.recovery_mode = storage.recovery.is_in_progress()
     f.backup_type = mnemonic.get_type()
-    if utils.BITCOIN_ONLY:
+    if utils.BITCOIN_ONLY or utils.BEAM_ONLY:
         f.capabilities = [
             Capability.Bitcoin,
             Capability.Crypto,
@@ -69,6 +69,8 @@ def get_features() -> Features:
             Capability.Shamir,
             Capability.ShamirGroups,
         ]
+    if utils.ENABLE_BEAM:
+        f.capabilities.append(Capability.Beam)
     f.sd_card_present = io.SDCard().present()
     f.sd_protection = storage.sd_salt.is_enabled()
     f.wipe_code_protection = config.has_wipe_code()

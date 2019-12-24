@@ -22,7 +22,7 @@ def _boot_apps() -> None:
     import apps.management
     import apps.wallet
 
-    if not utils.BITCOIN_ONLY:
+    if not utils.BITCOIN_ONLY and not utils.BEAM_ONLY:
         import apps.ethereum
         import apps.lisk
         import apps.monero
@@ -32,9 +32,11 @@ def _boot_apps() -> None:
         import apps.cardano
         import apps.tezos
         import apps.eos
-        import apps.beam
         import apps.binance
         import apps.webauthn
+
+    if utils.ENABLE_BEAM:
+        import apps.beam
 
     if __debug__:
         import apps.debug
@@ -43,7 +45,7 @@ def _boot_apps() -> None:
     apps.homescreen.boot()
     apps.management.boot()
     apps.wallet.boot()
-    if not utils.BITCOIN_ONLY:
+    if not utils.BITCOIN_ONLY and not utils.BEAM_ONLY:
         apps.ethereum.boot()
         apps.lisk.boot()
         apps.monero.boot()
@@ -53,9 +55,10 @@ def _boot_apps() -> None:
         apps.cardano.boot()
         apps.tezos.boot()
         apps.eos.boot()
-        apps.beam.boot()
         apps.binance.boot()
         apps.webauthn.boot()
+    if utils.ENABLE_BEAM:
+        apps.beam.boot()
     if __debug__:
         apps.debug.boot()
 
