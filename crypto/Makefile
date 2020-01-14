@@ -68,9 +68,11 @@ SRCS  += shamir.c
 SRCS  += hmac_drbg.c
 SRCS  += rfc6979.c
 SRCS  += slip39.c
+SRCS  += beam/crypto.c
 SRCS  += beam/rangeproof.c beam/oracle.c beam/inner_product.c beam/multi_mac.c beam/nonce_generator.c  beam/internal.c beam/functions.c
 SRCS  += beam/definitions.c beam/definitions_ipp.c beam/lib/vec.c
-SRCS  += beam/kernel.c beam/misc.c
+SRCS  += beam/kernel.c beam/misc.c beam/sign.c
+SRCS  += beam/lib/secp256k1_primitives/scalar.c beam/lib/secp256k1_primitives/field.c beam/lib/secp256k1_primitives/group.c beam/lib/secp256k1_primitives/util.c
 
 OBJS   = $(SRCS:.c=.o)
 
