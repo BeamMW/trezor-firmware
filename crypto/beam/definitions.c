@@ -1,12 +1,5 @@
 #include "definitions.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#include "beam/lib/secp256k1-zkp/src/field_impl.h"
-#include "beam/lib/secp256k1-zkp/src/group_impl.h"
-#include "beam/lib/secp256k1-zkp/src/scalar_impl.h"
-#pragma GCC diagnostic pop
-
 const uint8_t const_raw_G[] = {
     0x98, 0x17, 0xf8, 0x02, 0xc5, 0x56, 0xa0, 0x00, 0x9f, 0x95, 0x8d, 0x02,
     0x38, 0xb7, 0x6c, 0x03, 0xfc, 0x9b, 0x02, 0x03, 0xc1, 0xc2, 0xa1, 0x03,

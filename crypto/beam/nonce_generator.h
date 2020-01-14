@@ -1,12 +1,11 @@
 #ifndef _NONCE_GENERATOR_H_
 #define _NONCE_GENERATOR_H_
 
-#include "../hmac.h"
-#include "definitions.h"
+#include "crypto.h"
 #include "internal.h"
 
 typedef struct {
-  HMAC_SHA256_CTX hash;
+  beam_hmac_sha256_ctx hash;
   uint8_t prk[32];
   uint8_t okm[32];
   uint8_t number;

@@ -3,24 +3,7 @@
 
 #include "definitions.h"
 #include "kernel.h"
-#include "rangeproof.h"
-
-#define ANSI_COLOR_RED "\x1b[31m"
-#define ANSI_COLOR_GREEN "\x1b[32m"
-#define ANSI_COLOR_YELLOW "\x1b[33m"
-#define ANSI_COLOR_BLUE "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN "\x1b[36m"
-#define ANSI_COLOR_RESET "\x1b[0m"
-
-#define DEBUG_PRINT(msg, arr, len)                                         \
-  printf(ANSI_COLOR_CYAN "Line=%u" ANSI_COLOR_RESET ", Msg=%s ", __LINE__, \
-         msg);                                                             \
-  printf(ANSI_COLOR_YELLOW);                                               \
-  for (size_t i = 0; i < len; i++) {                                       \
-    printf("%02x", arr[i]);                                                \
-  }                                                                        \
-  printf(ANSI_COLOR_RESET "\n");
+//#include "rangeproof.h"
 
 #define CMP_SIMPLE(a, b) \
   if (a < b) return -1;  \
@@ -68,4 +51,4 @@ int kernel_cmp(const tx_kernel_t* lhs, const tx_kernel_t* rhs);
 void get_seed_kid_from_commitment(const point_t* commitment, uint8_t* seed,
                                   const HKdf_t* kdf);
 
-#endif  // __BEAM_MISC__
+#endif // __BEAM_MISC__

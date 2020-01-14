@@ -22,7 +22,7 @@
     int length, capacity; \
   }
 
-#define vec_init(v) memset((v), 0, sizeof(*(v)))
+#define vec_init(v) os_memset((v), 0, sizeof(*(v)))
 
 #define vec_deinit(v) (free((v)->data), vec_init(v))
 

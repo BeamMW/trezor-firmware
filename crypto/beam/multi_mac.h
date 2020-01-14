@@ -16,24 +16,39 @@ typedef struct {
   uint32_t odd;
 } _multi_mac_fast_aux_t;
 
+// 292 bytes of data
 typedef struct {
+  // 124 bytes * 2 = 248 bytes
   secp256k1_gej pt[MULTI_MAC_CASUAL_COUNT];
+  // 32 bytes
   secp256k1_scalar k;
   uint32_t prepared;
+  // 8 bytes
   _multi_mac_fast_aux_t aux;
 } multi_mac_casual_t;
 
 typedef struct {
+  // 124 bytes * 1 = 124 bytes
   secp256k1_gej pt[MULTI_MAC_PREPARED_COUNT];
 } multi_mac_prepared_t;
 
+#define MAX_CASUAL 1
+#define MAX_PREPARED 64U * 2 + 1
+// 21456 bytes
 typedef struct {
-  multi_mac_casual_t *casual;
+  //multi_mac_casual_t *casual;
+  // 292 bytes * 1 = 292 bytes bytes
+  multi_mac_casual_t casual[MAX_CASUAL];
   uint32_t n_casual;
 
-  multi_mac_prepared_t **prepared;
-  secp256k1_scalar *k_prepared;
-  _multi_mac_fast_aux_t *aux_prepared;
+  // 124 bytes * 129 = 15996 bytes
+  multi_mac_prepared_t prepared[MAX_PREPARED];
+  // 32 bytes * 129 = 4128 bytes
+  secp256k1_scalar k_prepared[MAX_PREPARED];
+  // 8 bytes * 129 = 1032 bytes
+  _multi_mac_fast_aux_t aux_prepared[MAX_PREPARED];
+  //_multi_mac_fast_aux_t *aux_prepared;
+  //multi_mac_prepared_t **prepared;
   uint32_t n_prepared;
 } multi_mac_t;
 
@@ -50,8 +65,7 @@ void multi_mac_casual_init_new(multi_mac_casual_t *casual,
 void multi_mac_casual_init(multi_mac_casual_t *casual, const secp256k1_gej *p,
                            const secp256k1_scalar *k);
 
-void multi_mac_fast_aux_schedule(_multi_mac_fast_aux_t *aux,
-                                 const secp256k1_scalar *k,
+void multi_mac_fast_aux_schedule(_multi_mac_fast_aux_t *aux, const secp256k1_scalar *k,
                                  unsigned int iBitsRemaining,
                                  unsigned int nMaxOdd, unsigned int *pTbl,
                                  unsigned int iThisEntry);
