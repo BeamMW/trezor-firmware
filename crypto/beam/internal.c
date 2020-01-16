@@ -150,10 +150,15 @@ uint32_t export_encrypted(const void *p, size_t size, uint8_t code,
   os_memcpy(mac_value + 1 + mac_value_size, p, size);
   os_memcpy(mac_value + 1 + mac_value_size + size, meta, meta_size);
 
+#if defined (LEDGER_SDK)
   uint8_t hv_secret[64];
   uint8_t salt[4];
   os_memset(salt, 0, 4);
   beam_pbkdf2_sha512(secret, secret_size, salt, 4, 2048, hv_secret, 64);
+#else
+  uint8_t hv_secret[32];
+  beam_pbkdf2_sha512(secret, secret_size, NULL, 0, 65536, hv_secret, 32);
+#endif // LEDGER_SDK
 
   xcrypt(hv_secret, mac_value, mac_value_size, data_size);
 

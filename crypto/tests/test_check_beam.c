@@ -345,11 +345,20 @@ void test_common(void) {
   char *owner_key_encoded = b64_encode(owner_key, 108);
   printf("owner_key encoded:" ANSI_COLOR_YELLOW " %s\n" ANSI_COLOR_RESET,
          owner_key_encoded);
+#if defined (LEDGER_SDK)
+  // Ledger version has only 2048 iterations and some salt
+  VERIFY_TEST(
+      0 ==
+      strncmp(
+          "3UQNoFSs3QF2GF4MaTMv7jxIlGYnXy7r0mS/S4tTxi0MXQQD7PY2Ji21qyFX4Gdq",
+          owner_key_encoded, 64));
+#else
   VERIFY_TEST(
       0 ==
       strncmp(
           "mJrVrOiyjaMFCjxRsfGahBkiVzC+ymIXDv2qJdJxR4WMBY4rCJ+vTkkcCdVXw41p",
           owner_key_encoded, 64));
+#endif // LEDGER_SDK
   free(owner_key_encoded);
 }
 

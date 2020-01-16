@@ -258,7 +258,9 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
         mm.k_prepared[mm.n_prepared] = ro;
         memcpy(&mm.prepared[mm.n_prepared++], get_generator_G(), sizeof(multi_mac_prepared_t));
 
-        const uint32_t MAX_DIM_IN_MEMORY = 50;//INNER_PRODUCT_N_DIM
+        // Attention: Ledger Nano X device can process up to 50 dims due to memory limits
+        //const uint32_t MAX_DIM_IN_MEMORY = 50;
+        const uint32_t MAX_DIM_IN_MEMORY = INNER_PRODUCT_N_DIM;
         for (int j = 0; j < 2; j++)
             for (uint32_t i = 0; i < MAX_DIM_IN_MEMORY; i++) {
                 nonce_generator_export_scalar(&nonce, NULL, 0, &p_s[j][i]);
@@ -347,14 +349,13 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
             multi_mac_t mm2;
             multi_mac_reset(&mm2);
             memcpy(mm2.casual, &mc, sizeof(multi_mac_casual_t));
-            //mm2.casual = &mc;
             mm2.n_casual = 1;
             secp256k1_gej comm3;
-            memcpy(&mc.k, &t1, sizeof(secp256k1_scalar));
+            memcpy(&mm2.casual[0].k, &t1, sizeof(secp256k1_scalar));
             multi_mac_calculate(&mm2, &comm3);
             secp256k1_gej_add_var(&comm, &comm, &comm3, NULL);
 
-            memcpy(&mc.k, &t2, sizeof(secp256k1_scalar));
+            memcpy(&mm2.casual[0].k, &t2, sizeof(secp256k1_scalar));
             multi_mac_calculate(&mm2, &comm3);
             secp256k1_gej_add_var(&comm2, &comm2, &comm3, NULL);
         } else {
