@@ -75,7 +75,6 @@ void multi_mac_fast_aux_schedule(_multi_mac_fast_aux_t *aux, const secp256k1_sca
 }
 
 void multi_mac_calculate(multi_mac_t *mm, secp256k1_gej *res) {
-  printf("Multi mac calculate - enter\n");
   static const uint32_t nBytes = 32;
   static const uint32_t nBits = nBytes << 3;
 
@@ -87,13 +86,11 @@ void multi_mac_calculate(multi_mac_t *mm, secp256k1_gej *res) {
   os_memset(pTblCasual, 0, sizeof(pTblCasual));
   os_memset(pTblPrepared, 0, sizeof(pTblPrepared));
 
-  printf("About to prepared loop\n");
   for (size_t i = 0; i < mm->n_prepared; i++) {
     multi_mac_fast_aux_schedule(&mm->aux_prepared[i], &mm->k_prepared[i], nBits,
                                 MULTI_MAC_PREPARED_MAX_ODD, pTblPrepared,
                                 i + 1);
   }
-  printf("About to casual loop\n");
   for (size_t i = 0; i < mm->n_casual; i++) {
     multi_mac_casual_t *x = &mm->casual[i];
     multi_mac_fast_aux_schedule(&x->aux, &x->k, nBits, MULTI_MAC_CASUAL_MAX_ODD,

@@ -8,6 +8,7 @@
 void init_context(void);
 context_t *get_context(void);
 void phrase_to_seed(const char *phrase, const uint32_t phrase_size, uint8_t *out_seed32);
+void phrase_to_seed_old(const char *phrase, uint8_t *out_seed32);
 void seed_to_kdf(const uint8_t *seed, size_t n, uint8_t *out_gen32, secp256k1_scalar *out_cof);
 void generate_hash_id(uint64_t idx, uint32_t type, uint32_t sub_idx, uint8_t *out32);
 void derive_key(const uint8_t *parent, uint8_t parent_size,

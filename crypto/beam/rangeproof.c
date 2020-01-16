@@ -214,18 +214,13 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
                                     multi_sig_t* msig_out,
                                     const secp256k1_gej* h_gen)
 {
-    printf("Enter co_sign\n");
     nonce_generator_t nonce;
-    printf("Nonce generator created\n");
     nonce_generator_init(&nonce, (const uint8_t* )"bulletproof", 12);
-    printf("Nonce generator init\n");
     nonce_generator_write(&nonce, cp->seed, DIGEST_LENGTH);
-    printf("Nonce generator write\n");
 
     // A = G*alpha + vec(aL)*vec(G) + vec(aR)*vec(H)
     secp256k1_scalar alpha, ro;
     nonce_generator_export_scalar(&nonce, NULL, 0, &alpha);
-    printf("Nonce generator exported scalar\n");
 
     // embed extra params into alpha
     static_assert(sizeof(packed_key_idv_t) < DIGEST_LENGTH);
@@ -249,29 +244,24 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
 
     secp256k1_scalar_add(&alpha, &alpha, &ro);
 
-    printf("About to rangeproof_confidential_calc_a\n");
-    //rangeproof_confidential_calc_a(&out->part1.a, &alpha, cp->kidv.value);
-    printf("After rangeproof_confidential_calc_a\n");
+    rangeproof_confidential_calc_a(&out->part1.a, &alpha, cp->kidv.value);
 
     // S = G*ro + vec(sL)*vec(G) + vec(sR)*vec(H)
     nonce_generator_export_scalar(&nonce, NULL, 0, &ro);
 
     secp256k1_scalar p_s[2][INNER_PRODUCT_N_DIM];
     secp256k1_gej comm;
-    printf("About to enter multi_mac scope\n");
     {
         multi_mac_t mm;
-        printf("About to multi_mac");
         multi_mac_with_bufs_alloc(&mm, 1, INNER_PRODUCT_N_DIM * 2 + 1);
         multi_mac_reset(&mm);
         mm.k_prepared[mm.n_prepared] = ro;
         memcpy(&mm.prepared[mm.n_prepared++], get_generator_G(), sizeof(multi_mac_prepared_t));
-        printf("About to multi_mac loop");
 
         const uint32_t MAX_DIM_IN_MEMORY = 50;//INNER_PRODUCT_N_DIM
         for (int j = 0; j < 2; j++)
             for (uint32_t i = 0; i < MAX_DIM_IN_MEMORY; i++) {
-                //nonce_generator_export_scalar(&nonce, NULL, 0, &p_s[j][i]);
+                nonce_generator_export_scalar(&nonce, NULL, 0, &p_s[j][i]);
 
                 memcpy(&mm.k_prepared[mm.n_prepared], &p_s[j][i], sizeof(secp256k1_scalar));
 
@@ -286,13 +276,9 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
         multi_mac_with_bufs_free(&mm);
         export_gej_to_point(&comm, &out->part1.s);
     }
-    printf("Out of multi_mac scope");
 
-    return 1;
     rangeproof_confidential_challenge_set_t cs;
-    printf("BEFORE rangeproof_confidential_challenge_set_init_1\n");
     rangeproof_confidential_challenge_set_init_1(&cs, &out->part1, oracle);
-    printf("AFTER rangeproof_confidential_challenge_set_init_1\n");
     secp256k1_scalar t0, t1, t2;
     secp256k1_scalar_clear(&t0);
     secp256k1_scalar_clear(&t1);
@@ -304,10 +290,8 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
     memcpy(&yPwr, &one, sizeof(secp256k1_scalar));
     memcpy(&zz_twoPwr, &cs.zz, sizeof(secp256k1_scalar));
 
-    printf("Before inner product cycle\n");
     for (uint32_t i = 0; i < INNER_PRODUCT_N_DIM; i++) {
         uint32_t bit = 1 & (cp->kidv.value >> i);
-        printf("inner product cycle I=%u\n", i);
 
         secp256k1_scalar_negate(&l0, &cs.z);
         if (bit) {
@@ -347,17 +331,13 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
     }
 
     rangeproof_confidential_multi_sig_t msig;
-    printf("About to msig_init\n");
     rangeproof_confidential_multi_sig_init(&msig, seed_sk);
-    printf("After msig_init\n");
 
     if (FINALIZE !=
         phase)  // otherwise part2 already contains the whole aggregate
     {
         secp256k1_gej comm2;
-        printf("About to rangeproof_confidential_multi_sig_add_info1\n");
         rangeproof_confidential_multi_sig_add_info1(&msig, &comm, &comm2);
-        printf("After rangeproof_confidential_multi_sig_add_info1\n");
 
         if (tag_is_custom(h_gen)) {
             // since we need 2 multiplications - prepare it explicitly.
@@ -470,7 +450,6 @@ int rangeproof_confidential_co_sign(rangeproof_confidential_t* out,
         secp256k1_scalar_mul(&zz_twoPwr, &zz_twoPwr, &two);
         secp256k1_scalar_mul(&yPwr, &yPwr, &cs.y);
     }
-    printf("Got to inner product!\n");
 
     inner_product_modifier_t mod;
     inner_product_modifier_init(&mod);

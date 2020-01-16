@@ -104,9 +104,8 @@ void verify_scalar_data(const char *msg, const char *hex_data,
 
 void test_key_generation(void) {
   uint8_t seed[DIGEST_LENGTH];
-  phrase_to_seed(
+  phrase_to_seed_old(
       "edge video genuine moon vibrant hybrid forum climb history iron involve sausage",
-      79U,
       seed);
   HKdf_t kdf;
   get_HKdf(0, seed, &kdf);
@@ -273,9 +272,8 @@ void test_inner_product(void) {
 
 void test_common(void) {
   uint8_t seed[DIGEST_LENGTH];
-  phrase_to_seed(
+  phrase_to_seed_old(
       "edge video genuine moon vibrant hybrid forum climb history iron involve sausage",
-      79U,
       seed);
   // phrase_to_seed("tomato provide age upon voice fetch nest night parent pilot
   // evil furnace", seed);

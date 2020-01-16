@@ -2,6 +2,7 @@
 #include "crypto.h"
 #include "internal.h"
 #include "nonce_generator.h"
+#include "misc.h"
 
 void signature_get_challenge(const secp256k1_gej *pt, const uint8_t *msg32,
                              secp256k1_scalar *out_scalar)
@@ -44,12 +45,16 @@ void signature_sign(const uint8_t *msg32, const secp256k1_scalar *sk,
   nonce_generator_init(&secret, (const uint8_t *)"beam-Schnorr", 13);
   nonce_generator_write(&secret, bytes, DIGEST_LENGTH);
 
+#ifdef BEAM_DEBUG
+  test_set_buffer(bytes, 32, DIGEST_LENGTH);
+#else
   beam_rng(bytes, sizeof(bytes) / sizeof(bytes[0])); // add extra
                                                    // randomness to the
                                                    // nonce, so it's
                                                    // derived from both
                                                    // deterministic and
                                                    // random parts
+#endif // BEAM_DEBUG
   nonce_generator_write(&secret, bytes, DIGEST_LENGTH);
 
   secp256k1_scalar multisig_nonce;

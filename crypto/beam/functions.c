@@ -44,6 +44,24 @@ void phrase_to_seed(const char *phrase, const uint32_t phrase_size, uint8_t *out
   beam_hash_sha256_init(&ctx);
   beam_hash_sha256_update(&ctx, hash, sizeHash);
   beam_hash_sha256_final(&ctx, out_seed32);
+
+}
+
+void phrase_to_seed_old(const char *phrase, uint8_t *out_seed32) {
+#include "../pbkdf2.h"
+  const char salt[] = "mnemonic";
+  const size_t sizeHash = 512 >> 3;
+  const size_t hmacIterations = 2048;
+  uint8_t hash[sizeHash];
+
+  pbkdf2_hmac_sha512((const uint8_t *)phrase, strlen(phrase),
+                     (const uint8_t *)salt, strlen(salt), hmacIterations, hash,
+                     sizeHash);
+
+  SHA256_CTX ctx;
+  sha256_Init(&ctx);
+  sha256_Update(&ctx, hash, sizeHash);
+  sha256_Final(&ctx, out_seed32);
 }
 
 void seed_to_kdf(const uint8_t *seed, size_t n, uint8_t *out_gen32,
