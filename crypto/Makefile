@@ -33,6 +33,7 @@ CFLAGS += -DUSE_KECCAK=1
 CFLAGS += -DUSE_MONERO=1
 CFLAGS += -DUSE_NEM=1
 CFLAGS += -DUSE_CARDANO=1
+CFLAGS += -DUSE_BEAM=1
 CFLAGS += -DBEAM_DEBUG=1
 CFLAGS += $(shell pkg-config --cflags openssl)
 
@@ -40,6 +41,9 @@ CFLAGS += $(shell pkg-config --cflags openssl)
 ifdef SMALL
 CFLAGS += -DUSE_PRECOMPUTED_CP=0
 endif
+
+# Beam IPP generators
+CFLAGS += -DGENERATORS_IPP_NORM
 
 SRCS   = bignum.c ecdsa.c curves.c secp256k1.c nist256p1.c rand.c hmac.c bip32.c bip39.c pbkdf2.c base58.c base32.c
 SRCS  += address.c

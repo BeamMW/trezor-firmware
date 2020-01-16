@@ -4,6 +4,9 @@
 #include "internal.h"
 #include "sign.h"
 #include "misc.h"
+#if ! defined (LEDGER_SDK) // TODO: TREZOR_CRYPTO
+#include "memzero.h"
+#endif // LEDGER_SDK
 
 int tag_is_custom(const secp256k1_gej* h_gen)
 {

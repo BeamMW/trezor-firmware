@@ -19,7 +19,7 @@ void assign_aligned(uint8_t* dest, uint8_t* src, const size_t bytes)
   for (size_t i = bytes; i--; src++) dest[i] = *src;
 }
 
-#if ! defined (LEDGER_SDK)
+#if defined (LEDGER_SDK)
 void memzero(uint8_t* dest, const size_t bytes)
 {
   memset(dest, 0, bytes);

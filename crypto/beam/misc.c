@@ -1,6 +1,9 @@
 #include "misc.h"
 #include "functions.h"
 #include "internal.h"
+#if ! defined (LEDGER_SDK) // TODO: TREZOR_CRYPTO
+#include "memzero.h"
+#endif // LEDGER_SDK
 
 void test_set_buffer(void* p, uint32_t n, uint8_t value) {
     for (uint32_t i = 0; i < n; i++)

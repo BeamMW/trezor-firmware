@@ -7,7 +7,9 @@
 int memis0(const void* p, const size_t n);
 void memxor(uint8_t* pDst, const uint8_t* pSrc, const size_t n);
 void assign_aligned(uint8_t* dest, uint8_t* src, const size_t bytes);
+#if defined(LEDGER_SDK)
 void memzero(uint8_t* dest, const size_t bytes);
+#endif // LEDGER_SDK
 
 int scalar_import_nnz(secp256k1_scalar *scalar, const uint8_t *data32);
 int export_gej_to_point(const secp256k1_gej *native_point, point_t *out_point);
