@@ -20,11 +20,13 @@ typedef SHA256_CTX beam_sha256_ctx;
 typedef HMAC_SHA256_CTX beam_hmac_sha256_ctx;
 #endif
 
-#if defined(NATIVE_CRYPT)
+// AES/DES/RSA are not available for non genuine Ledger applications.
+// This is because of some law concerning cryptography export between France and foreing country.
+#if defined(LEDGER_NATIVE_CRYPT)
 typedef cx_aes_key_t beam_aes_ctx;
 #else
 typedef aes_encrypt_ctx beam_aes_ctx;
-#endif
+#endif // LEDGER_NATIVE_CRYPT | ..
 
 
 typedef struct

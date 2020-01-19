@@ -7,7 +7,7 @@
 // 23932 bytes TOTAL
 
 //#define IPP_FLASH
-#ifdef IPP_FLASH
+#ifdef GENERATORS_IPP_FLASH
 // 15872 bytes
 extern const uint8_t N_const_lut_ipp_gen_real[] = {
     0x39, 0xc7, 0x37, 0x00, 0x3c, 0xfe, 0xb0, 0x01, 0x5f, 0x09, 0xb6, 0x02,
@@ -2032,4 +2032,4 @@ secp256k1_gej* get_generator_get1_minus(void) {
 secp256k1_gej* get_generator_dot_ipp(void) {
     return (secp256k1_gej *)N_const_ipp_gen_dot;
 }
-#endif
+#endif // GENERATORS_IPP_FLASH

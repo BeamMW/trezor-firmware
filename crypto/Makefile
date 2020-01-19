@@ -44,6 +44,8 @@ endif
 
 # Beam IPP generators
 CFLAGS += -DGENERATORS_IPP_NORM
+# Use Trezor's crypto module
+CFLAGS += -DTREZOR_CRYPTO_MOD
 
 SRCS   = bignum.c ecdsa.c curves.c secp256k1.c nist256p1.c rand.c hmac.c bip32.c bip39.c pbkdf2.c base58.c base32.c
 SRCS  += address.c

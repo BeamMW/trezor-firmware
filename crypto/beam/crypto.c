@@ -47,7 +47,7 @@ void beam_pxy_mul_scalar(pxy_t *pxy, const secp256k1_scalar *sk)
   beam_pxy_to_gej(pxy, &pt);
   gej_mul_scalar(&pt, sk, &pt);
   beam_gej_to_pxy(&pt, pxy);
-#endif // LEDGER_SDK
+#endif // LEDGER_SDK | ..
 }
 
 void beam_pbkdf2_sha512(const uint8_t *password, unsigned short password_len, uint8_t *salt,
@@ -56,10 +56,12 @@ void beam_pbkdf2_sha512(const uint8_t *password, unsigned short password_len, ui
 
 #if defined (LEDGER_SDK)
   cx_pbkdf2_sha512(password, password_len, salt, salt_len, num_iterations, out_hash, out_hash_len);
-#else
-#include "pbkdf2.h"
+#elif defined (TREZOR_CRYPTO_MOD)
+  #include "pbkdf2.h"
   pbkdf2_hmac_sha512(password, password_len, salt, salt_len, num_iterations, out_hash, out_hash_len);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of pbkdf2_sha512 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_hash_sha256_write_8(beam_sha256_ctx *hasher, uint8_t b)
@@ -80,56 +82,68 @@ void beam_hash_sha256_init(beam_sha256_ctx *hasher)
 {
 #if defined (LEDGER_SDK)
   cx_sha256_init(hasher);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   sha256_Init(hasher);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_hash_sha256_update(beam_sha256_ctx *hasher, const uint8_t *buf, unsigned int len)
 {
 #if defined (LEDGER_SDK)
   cx_hash((cx_hash_t *)hasher, 0, buf, len, NULL, 0);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   sha256_Update(hasher, buf, len);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 int beam_hash_sha256_final(beam_sha256_ctx *hasher, uint8_t *out)
 {
 #if defined (LEDGER_SDK)
   return cx_hash((cx_hash_t *)hasher, CX_LAST, NULL, 0, out, DIGEST_LENGTH);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   sha256_Final(hasher, out);
   return 0;
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_hash_hmac_sha256_init(beam_hmac_sha256_ctx *hasher, const uint8_t *key, const uint32_t keylen)
 {
 #if defined (LEDGER_SDK)
   cx_hmac_sha256_init(hasher, key, keylen);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   hmac_sha256_Init(hasher, key, keylen);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of hmac_sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_hash_hmac_sha256_update(beam_hmac_sha256_ctx *hasher, const uint8_t *buf, unsigned int len)
 {
 #if defined (LEDGER_SDK)
   cx_hmac((cx_hash_t *)hasher, 0, buf, len, NULL, 0);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   hmac_sha256_Update(hasher, buf, len);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of hmac_sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 int beam_hash_hmac_sha256_final(beam_hmac_sha256_ctx *hasher, uint8_t *out)
 {
 #if defined (LEDGER_SDK)
   return cx_hmac((cx_hash_t *)hasher, CX_LAST, NULL, 0, out, DIGEST_LENGTH);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   hmac_sha256_Final(hasher, out);
   return 0;
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of hmac_sha256 here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_get_private_key_data(uint8_t *data)
@@ -149,34 +163,40 @@ void beam_get_private_key_data(uint8_t *data)
   UNUSED(derivePath);
   // Test data
   os_memset(data, 3, DIGEST_LENGTH);
-#endif // LEDGER_SDK
+#endif // LEDGER_SDK | ..
 }
 
 void beam_aes_init(beam_aes_ctx* ctx, const uint8_t* key32)
 {
-#if defined (NATIVE_CRYPT)
+#if defined (LEDGER_NATIVE_CRYPT)
   cx_aes_init_key(key32, DIGEST_LENGTH, ctx);
-#else
+#elif defined (LEDGER_SDK) || defined (TREZOR_CRYPTO_MOD)
   aes_encrypt_key256(key32, ctx);
-#endif
+#else
+  #error "Add your own implementation of AES here!"
+#endif // LEDGER_NATIVE_CRYPT | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_aes_encrypt(const beam_aes_ctx *ctx, const uint8_t *iv16, const uint8_t *in, uint8_t *out, uint32_t len)
 {
-#if defined(NATIVE_CRYPT)
+#if defined(LEDGER_NATIVE_CRYPT)
   cx_aes_iv(ctx, CX_ENCRYPT | CX_CHAIN_CTR | CX_LAST | CX_PAD_NONE,
             iv16, 16, in, len, out, len);
-#else
+#elif defined (LEDGER_SDK) || defined (TREZOR_CRYPTO_MOD)
   aes_ctr_encrypt(in, out, len, (uint8_t*)iv16, aes_ctr_cbuf_inc, (beam_aes_ctx*)ctx);
-#endif
+#else
+  #error "Add your own implementation of AES here!"
+#endif // LEDGER_NATIVE_CRYPT | TREZOR_CRYPTO_MOD | ..
 }
 
 void beam_rng(uint8_t* dest, uint32_t len)
 {
 #if defined (LEDGER_SDK)
   cx_rng(dest, len);
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
   #include "rand.h"
   random_buffer(dest, len);
-#endif // LEDGER_SDK
+#else
+  #error "Add your own implementation of random module here!"
+#endif // LEDGER_SDK | TREZOR_CRYPTO_MOD | ..
 }
