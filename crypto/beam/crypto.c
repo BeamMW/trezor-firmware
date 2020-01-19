@@ -1,6 +1,5 @@
 #include "crypto.h"
 #include "internal.h"
-#include "rand.h"
 
 
 void beam_gej_to_pxy(const secp256k1_gej *gej, pxy_t *pxy)
@@ -177,6 +176,7 @@ void beam_rng(uint8_t* dest, uint32_t len)
 #if defined (LEDGER_SDK)
   cx_rng(dest, len);
 #else
+  #include "rand.h"
   random_buffer(dest, len);
 #endif // LEDGER_SDK
 }
