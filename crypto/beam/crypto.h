@@ -7,17 +7,21 @@
 #endif // LEDGER_SDK
 #include "debug.h"
 #include "beam/definitions.h"
+#if defined(TREZOR_CRYPTO_MOD)
 #include "beam/lib/aes/aes.h"
+#endif // TREZOR_CRYPTO_MOD
 
 #define BIP32_PATH 5
 
 #if defined(LEDGER_SDK)
 typedef cx_sha256_t beam_sha256_ctx;
 typedef cx_hmac_sha256_t beam_hmac_sha256_ctx;
-#else
+#elif defined (TREZOR_CRYPTO_MOD)
 #include "hmac.h"
 typedef SHA256_CTX beam_sha256_ctx;
 typedef HMAC_SHA256_CTX beam_hmac_sha256_ctx;
+#else
+#error "Define your own SHA256 and HMAC_SHA256 contexts!"
 #endif
 
 // AES/DES/RSA are not available for non genuine Ledger applications.
