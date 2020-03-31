@@ -72,6 +72,7 @@ static uint32_t lock_time = 0;
 static uint32_t expiry = 0;
 static bool overwintered = false;
 static uint32_t version_group_id = 0;
+static uint32_t timestamp = 0;
 #if !BITCOIN_ONLY
 static uint32_t branch_id = 0;
 #endif
@@ -118,6 +119,7 @@ enum {
 #define PROGRESS_PRECISION 16
 
 /*
+clang-format off
 
 Workflow of streamed signing
 The STAGE_ constants describe the signing_stage when request is sent.
@@ -131,20 +133,29 @@ Phase1 - check inputs, previous transactions, and outputs
 =========================================================
 
 foreach I (idx1):
-    Request I STAGE_REQUEST_1_INPUT Add I to segwit hash_prevouts, hash_sequence
+    Request I                                                 STAGE_REQUEST_1_INPUT
+    Add I to segwit hash_prevouts, hash_sequence
     Add I to Decred decred_hash_prefix
     Add I to TransactionChecksum (prevout and type)
     if (Decred)
         Return I
     If not segwit, Calculate amount of I:
-        Request prevhash I, META STAGE_REQUEST_2_PREV_META foreach prevhash I
-(idx2): Request prevhash I STAGE_REQUEST_2_PREV_INPUT foreach prevhash O (idx2):
-            Request prevhash O STAGE_REQUEST_2_PREV_OUTPUT Add amount of
-prevhash O (which is amount of I) Request prevhash extra data (if applicable)
-STAGE_REQUEST_2_PREV_EXTRADATA Calculate hash of streamed tx, compare to
-prevhash I foreach O (idx1): Request O STAGE_REQUEST_3_OUTPUT Add O to Decred
-decred_hash_prefix Add O to TransactionChecksum if (Decred) Return O Display
-output Ask for confirmation
+        Request prevhash I, META                              STAGE_REQUEST_2_PREV_META
+        foreach prevhash I (idx2):
+            Request prevhash I                                STAGE_REQUEST_2_PREV_INPUT
+        foreach prevhash O (idx2):
+            Request prevhash O                                STAGE_REQUEST_2_PREV_OUTPUT
+            Add amount of prevhash O (which is amount of I)
+        Request prevhash extra data (if applicable)           STAGE_REQUEST_2_PREV_EXTRADATA
+        Calculate hash of streamed tx, compare to prevhash I
+foreach O (idx1):
+    Request O                                                 STAGE_REQUEST_3_OUTPUT
+    Add O to Decred decred_hash_prefix
+    Add O to TransactionChecksum
+    if (Decred)
+        Return O
+    Display output
+    Ask for confirmation
 
 Check tx fee
 Ask for confirmation
@@ -157,17 +168,21 @@ if (Decred)
 
 foreach I (idx1):  // input to sign
     if (idx1 is segwit)
-        Request I STAGE_REQUEST_SEGWIT_INPUT Return serialized input chunk
+        Request I                                             STAGE_REQUEST_SEGWIT_INPUT
+        Return serialized input chunk
 
     else
         foreach I (idx2):
-            Request I STAGE_REQUEST_4_INPUT If idx1 == idx2 Fill scriptsig
+            Request I                                         STAGE_REQUEST_4_INPUT
+            If idx1 == idx2
+                Fill scriptsig
                 Remember key for signing
             Add I to StreamTransactionSign
             Add I to TransactionChecksum
         foreach O (idx2):
-            Request O STAGE_REQUEST_4_OUTPUT Add O to StreamTransactionSign Add
-O to TransactionChecksum
+            Request O                                         STAGE_REQUEST_4_OUTPUT
+            Add O to StreamTransactionSign
+            Add O to TransactionChecksum
 
         Compare TransactionChecksum with checksum computed in Phase 1
         If different:
@@ -176,24 +191,32 @@ O to TransactionChecksum
         Return signed chunk
 
 foreach O (idx1):
-    Request O STAGE_REQUEST_5_OUTPUT Rewrite change address Return O
+    Request O                                                 STAGE_REQUEST_5_OUTPUT
+	Rewrite change address
+	Return O
 
 
 Phase3: sign segwit inputs, check that nothing changed
 ===============================================
 
 foreach I (idx1):  // input to sign
-    Request I STAGE_REQUEST_SEGWIT_WITNESS Check amount Sign  segwit prevhash,
-sequence, amount, outputs Return witness
+    Request I                                                 STAGE_REQUEST_SEGWIT_WITNESS
+	Check amount
+	Sign  segwit prevhash, sequence, amount, outputs
+	Return witness
 
 Phase3: sign Decred inputs
 ==========================
 
-foreach I (idx1): // input to sign STAGE_REQUEST_DECRED_WITNESS Request I Fill
-scriptSig Compute hash_witness
+foreach I (idx1): // input to sign                            STAGE_REQUEST_DECRED_WITNESS
+    Request I
+	Fill scriptSig
+	Compute hash_witness
 
     Sign (hash_type || decred_hash_prefix || hash_witness)
     Return witness
+
+clang-format on
 */
 
 void send_req_1_input(void) {
@@ -417,7 +440,7 @@ bool check_change_bip32_path(const TxOutputType *toutput) {
 bool compile_input_script_sig(TxInputType *tinput) {
   if (!multisig_fp_mismatch) {
     // check that this is still multisig
-    uint8_t h[32];
+    uint8_t h[32] = {0};
     if (!tinput->has_multisig ||
         cryptoMultisigFingerprint(&(tinput->multisig), h) == 0 ||
         memcmp(multisig_fp, h, 32) != 0) {
@@ -445,7 +468,7 @@ bool compile_input_script_sig(TxInputType *tinput) {
     tinput->script_sig.size = compile_script_multisig(coin, &(tinput->multisig),
                                                       tinput->script_sig.bytes);
   } else {  // SPENDADDRESS
-    uint8_t hash[20];
+    uint8_t hash[20] = {0};
     ecdsa_get_pubkeyhash(node.public_key, coin->curve->hasher_pubkey, hash);
     tinput->script_sig.size =
         compile_script_sig(coin->address_type, hash, tinput->script_sig.bytes);
@@ -465,6 +488,7 @@ void signing_init(const SignTx *msg, const CoinInfo *_coin,
 #if !BITCOIN_ONLY
   overwintered = msg->has_overwintered && msg->overwintered;
   version_group_id = msg->version_group_id;
+  timestamp = msg->timestamp;
   branch_id = msg->branch_id;
   // set default values for Zcash if branch_id is unset
   if (overwintered && (branch_id == 0)) {
@@ -512,7 +536,7 @@ void signing_init(const SignTx *msg, const CoinInfo *_coin,
   next_nonsegwit_input = 0xffffffff;
 
   tx_init(&to, inputs_count, outputs_count, version, lock_time, expiry, 0,
-          coin->curve->hasher_sign, overwintered, version_group_id);
+          coin->curve->hasher_sign, overwintered, version_group_id, timestamp);
 
 #if !BITCOIN_ONLY
   if (coin->decred) {
@@ -520,7 +544,8 @@ void signing_init(const SignTx *msg, const CoinInfo *_coin,
     to.is_decred = true;
 
     tx_init(&ti, inputs_count, outputs_count, version, lock_time, expiry, 0,
-            coin->curve->hasher_sign, overwintered, version_group_id);
+            coin->curve->hasher_sign, overwintered, version_group_id,
+            timestamp);
     ti.version |= (DECRED_SERIALIZE_NO_WITNESS << 16);
     ti.is_decred = true;
   }
@@ -557,7 +582,7 @@ static bool signing_check_input(const TxInputType *txinput) {
   /* (if all input share the same fingerprint, outputs having the same
    * fingerprint will be considered as change outputs) */
   if (txinput->has_multisig && !multisig_fp_mismatch) {
-    uint8_t h[32];
+    uint8_t h[32] = {0};
     if (cryptoMultisigFingerprint(&txinput->multisig, h) == 0) {
       fsm_sendFailure(FailureType_Failure_ProcessError,
                       _("Error computing multisig fingerprint"));
@@ -610,7 +635,7 @@ static bool signing_check_input(const TxInputType *txinput) {
 
 // check if the hash of the prevtx matches
 static bool signing_check_prevtx_hash(void) {
-  uint8_t hash[32];
+  uint8_t hash[32] = {0};
   tx_hash_final(&tp, hash, true);
   if (memcmp(hash, input.prev_hash.bytes, 32) != 0) {
     fsm_sendFailure(FailureType_Failure_DataError,
@@ -640,7 +665,7 @@ static bool signing_check_output(TxOutputType *txoutput) {
      * For multisig check that all inputs are multisig
      */
     if (txoutput->has_multisig) {
-      uint8_t h[32];
+      uint8_t h[32] = {0};
       if (multisig_fp_set && !multisig_fp_mismatch &&
           cryptoMultisigFingerprint(&(txoutput->multisig), h) &&
           memcmp(multisig_fp, h, 32) == 0) {
@@ -720,7 +745,7 @@ static bool signing_check_fee(void) {
       return false;
     }
   }
-  uint64_t fee;
+  uint64_t fee = 0;
   if (spending <= to_spend) {
     fee = to_spend - spending;
     if (fee > ((uint64_t)tx_weight * coin->maxfee_kb) / 4000) {
@@ -788,7 +813,7 @@ static void phase1_request_next_output(void) {
 
 static void signing_hash_bip143(const TxInputType *txinput, uint8_t *hash) {
   uint32_t hash_type = signing_hash_type();
-  Hasher hasher_preimage;
+  Hasher hasher_preimage = {0};
   hasher_Init(&hasher_preimage, coin->curve->hasher_sign);
   hasher_Update(&hasher_preimage, (const uint8_t *)&version, 4);  // nVersion
   hasher_Update(&hasher_preimage, hash_prevouts, 32);  // hashPrevouts
@@ -809,10 +834,10 @@ static void signing_hash_bip143(const TxInputType *txinput, uint8_t *hash) {
 
 static void signing_hash_zip143(const TxInputType *txinput, uint8_t *hash) {
   uint32_t hash_type = signing_hash_type();
-  uint8_t personal[16];
+  uint8_t personal[16] = {0};
   memcpy(personal, "ZcashSigHash", 12);
   memcpy(personal + 12, &branch_id, 4);
-  Hasher hasher_preimage;
+  Hasher hasher_preimage = {0};
   hasher_InitParam(&hasher_preimage, HASHER_BLAKE2B_PERSONAL, personal,
                    sizeof(personal));
   uint32_t ver = version | TX_OVERWINTERED;  // 1. nVersion | fOverwintered
@@ -843,10 +868,10 @@ static void signing_hash_zip143(const TxInputType *txinput, uint8_t *hash) {
 
 static void signing_hash_zip243(const TxInputType *txinput, uint8_t *hash) {
   uint32_t hash_type = signing_hash_type();
-  uint8_t personal[16];
+  uint8_t personal[16] = {0};
   memcpy(personal, "ZcashSigHash", 12);
   memcpy(personal + 12, &branch_id, 4);
-  Hasher hasher_preimage;
+  Hasher hasher_preimage = {0};
   hasher_InitParam(&hasher_preimage, HASHER_BLAKE2B_PERSONAL, personal,
                    sizeof(personal));
   uint32_t ver = version | TX_OVERWINTERED;  // 1. nVersion | fOverwintered
@@ -884,7 +909,7 @@ static void signing_hash_zip243(const TxInputType *txinput, uint8_t *hash) {
 
 static void signing_hash_decred(const uint8_t *hash_witness, uint8_t *hash) {
   uint32_t hash_type = signing_hash_type();
-  Hasher hasher_preimage;
+  Hasher hasher_preimage = {0};
   hasher_Init(&hasher_preimage, coin->curve->hasher_sign);
   hasher_Update(&hasher_preimage, (const uint8_t *)&hash_type, 4);
   hasher_Update(&hasher_preimage, decred_hash_prefix, 32);
@@ -941,7 +966,7 @@ static bool signing_sign_hash(TxInputType *txinput, const uint8_t *private_key,
 }
 
 static bool signing_sign_input(void) {
-  uint8_t hash[32];
+  uint8_t hash[32] = {0};
   hasher_Final(&hasher_check, hash);
   if (memcmp(hash, hash_outputs, 32) != 0) {
     fsm_sendFailure(FailureType_Failure_DataError,
@@ -962,7 +987,7 @@ static bool signing_sign_input(void) {
 
 static bool signing_sign_segwit_input(TxInputType *txinput) {
   // idx1: index to sign
-  uint8_t hash[32];
+  uint8_t hash[32] = {0};
 
   if (txinput->script_type == InputScriptType_SPENDWITNESS ||
       txinput->script_type == InputScriptType_SPENDP2SHWITNESS) {
@@ -1042,7 +1067,7 @@ static bool signing_sign_segwit_input(TxInputType *txinput) {
 #if !BITCOIN_ONLY
 
 static bool signing_sign_decred_input(TxInputType *txinput) {
-  uint8_t hash[32], hash_witness[32];
+  uint8_t hash[32] = {}, hash_witness[32] = {};
   tx_hash_final(&ti, hash_witness, false);
   signing_hash_decred(hash_witness, hash);
   resp.has_serialized = true;
@@ -1188,7 +1213,7 @@ void signing_txack(TransactionType *tx) {
       }
       tx_init(&tp, tx->inputs_cnt, tx->outputs_cnt, tx->version, tx->lock_time,
               tx->expiry, tx->extra_data_len, coin->curve->hasher_sign,
-              overwintered, version_group_id);
+              tx->overwintered, tx->version_group_id, tx->timestamp);
 #if !BITCOIN_ONLY
       if (coin->decred) {
         tp.version |= (DECRED_SERIALIZE_NO_WITNESS << 16);
@@ -1290,7 +1315,8 @@ void signing_txack(TransactionType *tx) {
                  PROGRESS_PRECISION);
       if (idx2 == 0) {
         tx_init(&ti, inputs_count, outputs_count, version, lock_time, expiry, 0,
-                coin->curve->hasher_sign, overwintered, version_group_id);
+                coin->curve->hasher_sign, overwintered, version_group_id,
+                timestamp);
         hasher_Reset(&hasher_check);
       }
       // check prevouts and script type
@@ -1325,7 +1351,7 @@ void signing_txack(TransactionType *tx) {
         idx2++;
         send_req_4_input();
       } else {
-        uint8_t hash[32];
+        uint8_t hash[32] = {0};
         hasher_Final(&hasher_check, hash);
         if (memcmp(hash, hash_check, 32) != 0) {
           fsm_sendFailure(FailureType_Failure_DataError,
@@ -1405,7 +1431,7 @@ void signing_txack(TransactionType *tx) {
         }
         authorized_amount -= tx->inputs[0].amount;
 
-        uint8_t hash[32];
+        uint8_t hash[32] = {0};
 #if !BITCOIN_ONLY
         if (overwintered) {
           switch (version) {
@@ -1533,13 +1559,15 @@ void signing_txack(TransactionType *tx) {
       if (idx1 == 0) {
         // witness
         tx_init(&to, inputs_count, outputs_count, version, lock_time, expiry, 0,
-                coin->curve->hasher_sign, overwintered, version_group_id);
+                coin->curve->hasher_sign, overwintered, version_group_id,
+                timestamp);
         to.is_decred = true;
       }
 
       // witness hash
       tx_init(&ti, inputs_count, outputs_count, version, lock_time, expiry, 0,
-              coin->curve->hasher_sign, overwintered, version_group_id);
+              coin->curve->hasher_sign, overwintered, version_group_id,
+              timestamp);
       ti.version |= (DECRED_SERIALIZE_WITNESS_SIGNING << 16);
       ti.is_decred = true;
       if (!compile_input_script_sig(&tx->inputs[0])) {
@@ -1550,7 +1578,7 @@ void signing_txack(TransactionType *tx) {
       }
 
       for (idx2 = 0; idx2 < inputs_count; idx2++) {
-        uint32_t r;
+        uint32_t r = 0;
         if (idx2 == idx1) {
           r = tx_serialize_decred_witness_hash(&ti, &tx->inputs[0]);
         } else {

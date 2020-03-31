@@ -5,8 +5,11 @@ from trezorui import Display
 
 from trezor import io, loop, res, utils
 
+if __debug__:
+    from apps.debug import notify_layout_change
+
 if False:
-    from typing import Any, Generator, Tuple, TypeVar
+    from typing import Any, Awaitable, Generator, List, Tuple, TypeVar
 
     Pos = Tuple[int, int]
     Area = Tuple[int, int, int, int]
@@ -30,6 +33,9 @@ VIEWY = const(9)
 
 # channel used to cancel layouts, see `Cancelled` exception
 layout_chan = loop.chan()
+
+# allow only one alert at a time to avoid alerts overlapping
+_alert_in_progress = False
 
 # in debug mode, display an indicator in top right corner
 if __debug__:
@@ -75,7 +81,7 @@ def pulse(period: int, offset: int = 0) -> float:
     return 0.5 + 0.5 * math.sin(2 * math.pi * (utime.ticks_us() + offset) / period)
 
 
-async def alert(count: int = 3) -> None:
+async def _alert(count: int) -> None:
     short_sleep = loop.sleep(20000)
     long_sleep = loop.sleep(80000)
     for i in range(count * 2):
@@ -86,6 +92,17 @@ async def alert(count: int = 3) -> None:
             display.backlight(style.BACKLIGHT_DIM)
             await long_sleep
     display.backlight(style.BACKLIGHT_NORMAL)
+    global _alert_in_progress
+    _alert_in_progress = False
+
+
+def alert(count: int = 3) -> None:
+    global _alert_in_progress
+    if _alert_in_progress:
+        return
+
+    _alert_in_progress = True
+    loop.schedule(_alert(count))
 
 
 async def click() -> Pos:
@@ -226,6 +243,11 @@ class Component:
     def on_touch_end(self, x: int, y: int) -> None:
         pass
 
+    if __debug__:
+
+        def read_content(self) -> List[str]:
+            return [self.__class__.__name__]
+
 
 class Result(Exception):
     """
@@ -279,6 +301,8 @@ class Layout(Component):
             # layout channel.  This allows other layouts to cancel us, and the
             # layout tasks to trigger restart by exiting (new tasks are created
             # and we continue, because we are in a loop).
+            if __debug__:
+                notify_layout_change(self)
             while True:
                 await loop.race(layout_chan.take(), *self.create_tasks())
         except Result as result:
@@ -334,6 +358,6 @@ class Layout(Component):
             self.dispatch(RENDER, 0, 0)
 
 
-def wait_until_layout_is_running():
+def wait_until_layout_is_running() -> Awaitable[None]:  # type: ignore
     while not layout_chan.takers:
         yield

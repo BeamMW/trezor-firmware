@@ -5,7 +5,7 @@ if [ "$1" = "--gcc_source" ]; then
   TOOLCHAIN_FLAVOR=src
   shift
 else
-  TOOLCHAIN_FLAVOR=linux
+  TOOLCHAIN_FLAVOR=x86_64-linux
 fi
 
 IMAGE=trezor-firmware-build.$TOOLCHAIN_FLAVOR
@@ -36,7 +36,7 @@ for BITCOIN_ONLY in 0 1; do
   DIRSUFFIX=${BITCOIN_ONLY/1/-bitcoinonly}
   DIRSUFFIX=${DIRSUFFIX/0/}
 
-  docker run -it \
+  docker run -it --rm \
     -v $(pwd):/local \
     -v $(pwd)/build/core"${DIRSUFFIX}":/build:z \
     --env BITCOIN_ONLY="$BITCOIN_ONLY" \
@@ -62,7 +62,7 @@ for BITCOIN_ONLY in 0 1; do
   DIRSUFFIX=${BITCOIN_ONLY/1/-bitcoinonly}
   DIRSUFFIX=${DIRSUFFIX/0/}
 
-  docker run -it \
+  docker run -it --rm \
     -v $(pwd):/local \
     -v $(pwd)/build/legacy"${DIRSUFFIX}":/build:z \
     --env BITCOIN_ONLY="$BITCOIN_ONLY" \

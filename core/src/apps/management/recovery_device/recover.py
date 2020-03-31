@@ -1,12 +1,13 @@
+import storage.recovery
+import storage.recovery_shares
 from trezor.crypto import bip39, slip39
 from trezor.errors import MnemonicError
 
-from apps.common import storage
 from apps.management import backup_types
 
 if False:
     from trezor.messages.ResetDevice import EnumTypeBackupType
-    from typing import Optional, Tuple, List
+    from typing import Optional, Tuple, List, Union
 
 
 class RecoveryAborted(Exception):
@@ -37,7 +38,6 @@ def process_slip39(words: str) -> Tuple[Optional[bytes], slip39.Share]:
         storage.recovery.set_slip39_group_count(share.group_count)
         storage.recovery.set_slip39_iteration_exponent(share.iteration_exponent)
         storage.recovery.set_slip39_identifier(share.identifier)
-        storage.recovery.set_slip39_threshold(share.threshold)
         storage.recovery.set_slip39_remaining_shares(
             share.threshold - 1, share.group_index
         )
@@ -57,8 +57,12 @@ def process_slip39(words: str) -> Tuple[Optional[bytes], slip39.Share]:
     # These should be checked by UI before so it's a Runtime exception otherwise
     if share.identifier != storage.recovery.get_slip39_identifier():
         raise RuntimeError("Slip39: Share identifiers do not match")
+    if share.iteration_exponent != storage.recovery.get_slip39_iteration_exponent():
+        raise RuntimeError("Slip39: Share exponents do not match")
     if storage.recovery_shares.get(share.index, share.group_index):
         raise RuntimeError("Slip39: This mnemonic was already entered")
+    if share.group_count != storage.recovery.get_slip39_group_count():
+        raise RuntimeError("Slip39: Group count does not match")
 
     remaining_for_share = (
         storage.recovery.get_slip39_remaining_shares(share.group_index)
@@ -89,7 +93,11 @@ def process_slip39(words: str) -> Tuple[Optional[bytes], slip39.Share]:
     return secret, share
 
 
-def load_slip39_state() -> Tuple[Optional[int], Optional[EnumTypeBackupType]]:
+if False:
+    Slip39State = Union[Tuple[int, EnumTypeBackupType], Tuple[None, None]]
+
+
+def load_slip39_state() -> Slip39State:
     previous_mnemonics = fetch_previous_mnemonics()
     if not previous_mnemonics:
         return None, None

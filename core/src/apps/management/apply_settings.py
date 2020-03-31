@@ -1,9 +1,9 @@
+import storage.device
 from trezor import ui, wire
 from trezor.messages import ButtonRequestType, PassphraseSourceType
 from trezor.messages.Success import Success
 from trezor.ui.text import Text
 
-from apps.common import storage
 from apps.common.confirm import require_confirm
 
 

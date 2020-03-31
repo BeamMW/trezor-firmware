@@ -16,7 +16,7 @@
 
 import pytest
 
-from trezorlib import btc, debuglink, device, messages as proto, misc
+from trezorlib import btc, device, messages as proto, misc
 from trezorlib.exceptions import TrezorFailure
 
 from ..common import MNEMONIC12
@@ -107,36 +107,6 @@ class TestProtectionLevels:
             device.wipe(client)
 
     @pytest.mark.setup_client(uninitialized=True)
-    def test_load_device(self, client):
-        with client:
-            client.set_expected_responses(
-                [proto.ButtonRequest(), proto.Success(), proto.Features()]
-            )
-            debuglink.load_device_by_mnemonic(
-                client,
-                "this is mnemonic",
-                "1234",
-                True,
-                "label",
-                "english",
-                skip_checksum=True,
-            )
-
-        with pytest.raises(TrezorFailure):
-            # This must fail, because device is already initialized
-            # Using direct call because `load_device_by_mnemonic` has its own check
-            client.call(
-                proto.LoadDevice(
-                    mnemonics="this is mnemonic",
-                    pin="1234",
-                    passphrase_protection=True,
-                    language="english",
-                    label="label",
-                    skip_checksum=True,
-                )
-            )
-
-    @pytest.mark.setup_client(uninitialized=True)
     def test_reset_device(self, client):
         with client:
             client.set_expected_responses(
@@ -145,7 +115,7 @@ class TestProtectionLevels:
                 + [proto.ButtonRequest()] * 24
                 + [proto.Success(), proto.Features()]
             )
-            device.reset(client, False, 128, True, False, "label", "english")
+            device.reset(client, False, 128, True, False, "label", "en-US")
 
         with pytest.raises(TrezorFailure):
             # This must fail, because device is already initialized
@@ -157,7 +127,7 @@ class TestProtectionLevels:
                     passphrase_protection=True,
                     pin_protection=False,
                     label="label",
-                    language="english",
+                    language="en-US",
                 )
             )
 
@@ -172,7 +142,7 @@ class TestProtectionLevels:
             )
 
             device.recover(
-                client, 12, False, False, "label", "english", client.mnemonic_callback
+                client, 12, False, False, "label", "en-US", client.mnemonic_callback
             )
 
         with pytest.raises(TrezorFailure):
@@ -184,7 +154,7 @@ class TestProtectionLevels:
                     passphrase_protection=False,
                     pin_protection=False,
                     label="label",
-                    language="english",
+                    language="en-US",
                 )
             )
 

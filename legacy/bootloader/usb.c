@@ -30,6 +30,7 @@
 #include "memzero.h"
 #include "oled.h"
 #include "rng.h"
+#include "secbool.h"
 #include "secp256k1.h"
 #include "sha2.h"
 #include "signatures.h"
@@ -41,7 +42,6 @@
 #include "winusb.h"
 
 #include "usb_desc.h"
-#include "usb_erase.h"
 #include "usb_send.h"
 
 enum {
@@ -60,14 +60,27 @@ static char flash_state = STATE_READY;
 static uint32_t FW_HEADER[FLASH_FWHEADER_LEN / sizeof(uint32_t)];
 static uint32_t FW_CHUNK[FW_CHUNK_SIZE / sizeof(uint32_t)];
 
+static void flash_enter(void) {
+  flash_wait_for_last_operation();
+  flash_clear_status_flags();
+  flash_unlock();
+}
+
+static void flash_exit(void) {
+  flash_wait_for_last_operation();
+  flash_lock();
+}
+
+#include "usb_erase.h"
+
 static void check_and_write_chunk(void) {
   uint32_t offset = (chunk_idx == 0) ? FLASH_FWHEADER_LEN : 0;
   uint32_t chunk_pos = flash_pos % FW_CHUNK_SIZE;
   if (chunk_pos == 0) {
     chunk_pos = FW_CHUNK_SIZE;
   }
-  uint8_t hash[32];
-  SHA256_CTX ctx;
+  uint8_t hash[32] = {0};
+  SHA256_CTX ctx = {0};
   sha256_Init(&ctx);
   sha256_Update(&ctx, (const uint8_t *)FW_CHUNK + offset, chunk_pos - offset);
   if (chunk_pos < 64 * 1024) {
@@ -88,17 +101,14 @@ static void check_and_write_chunk(void) {
     return;
   }
 
-  flash_wait_for_last_operation();
-  flash_clear_status_flags();
-  flash_unlock();
+  flash_enter();
   for (uint32_t i = offset / sizeof(uint32_t); i < chunk_pos / sizeof(uint32_t);
        i++) {
     flash_program_word(
         FLASH_FWHEADER_START + chunk_idx * FW_CHUNK_SIZE + i * sizeof(uint32_t),
         FW_CHUNK[i]);
   }
-  flash_wait_for_last_operation();
-  flash_lock();
+  flash_exit();
 
   // all done
   if (flash_len == flash_pos) {
@@ -115,6 +125,34 @@ static void check_and_write_chunk(void) {
 
   memzero(FW_CHUNK, sizeof(FW_CHUNK));
   chunk_idx++;
+}
+
+// read protobuf integer and advance pointer
+static secbool readprotobufint(const uint8_t **ptr, uint32_t *result) {
+  *result = 0;
+
+  for (int i = 0; i <= 3; ++i) {
+    *result += (**ptr & 0x7F) << (7 * i);
+    if ((**ptr & 0x80) == 0) {
+      (*ptr)++;
+      return sectrue;
+    }
+    (*ptr)++;
+  }
+
+  if (**ptr & 0xF0) {
+    // result does not fit into uint32_t
+    *result = 0;
+
+    // skip over the rest of the integer
+    while (**ptr & 0x80) (*ptr)++;
+    (*ptr)++;
+    return secfalse;
+  }
+
+  *result += (uint32_t)(**ptr) << 28;
+  (*ptr)++;
+  return sectrue;
 }
 
 static void rx_callback(usbd_device *dev, uint8_t ep) {
@@ -163,15 +201,11 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       if (but) {
         erase_storage_code_progress();
         flash_state = STATE_END;
-        layoutDialog(&bmp_icon_ok, NULL, NULL, NULL, "Device",
-                     "successfully wiped.", NULL, "You may now",
-                     "unplug your Trezor.", NULL);
+        show_unplug("Device", "successfully wiped.");
         send_msg_success(dev);
       } else {
         flash_state = STATE_END;
-        layoutDialog(&bmp_icon_warning, NULL, NULL, NULL, "Device wipe",
-                     "aborted.", NULL, "You may now", "unplug your Trezor.",
-                     NULL);
+        show_unplug("Device wipe", "aborted.");
         send_msg_failure(dev);
       }
       return;
@@ -207,9 +241,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       } else {
         send_msg_failure(dev);
         flash_state = STATE_END;
-        layoutDialog(&bmp_icon_warning, NULL, NULL, NULL,
-                     "Firmware installation", "aborted.", NULL, "You may now",
-                     "unplug your Trezor.", NULL);
+        show_unplug("Firmware installation", "aborted.");
       }
       return;
     }
@@ -226,25 +258,30 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       }
       // read payload length
       const uint8_t *p = buf + 10;
-      flash_len = readprotobufint(&p);
+      if (readprotobufint(&p, &flash_len) != sectrue) {  // integer too large
+        send_msg_failure(dev);
+        flash_state = STATE_END;
+        show_halt("Firmware is", "too big.");
+        return;
+      }
       if (flash_len <= FLASH_FWHEADER_LEN) {  // firmware is too small
         send_msg_failure(dev);
         flash_state = STATE_END;
-        show_halt("Firmware is too small.", NULL);
+        show_halt("Firmware is", "too small.");
         return;
       }
       if (flash_len >
           FLASH_FWHEADER_LEN + FLASH_APP_LEN) {  // firmware is too big
         send_msg_failure(dev);
         flash_state = STATE_END;
-        show_halt("Firmware is too big.", NULL);
+        show_halt("Firmware is", "too big.");
         return;
       }
       // check firmware magic
       if (memcmp(p, &FIRMWARE_MAGIC_NEW, 4) != 0) {
         send_msg_failure(dev);
         flash_state = STATE_END;
-        show_halt("Wrong firmware header.", NULL);
+        show_halt("Wrong firmware", "header.");
         return;
       }
       memzero(FW_HEADER, sizeof(FW_HEADER));
@@ -254,7 +291,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       chunk_idx = 0;
       w = 0;
       while (p < buf + 64) {
-        w = (w >> 8) | (*p << 24);  // assign byte to first byte of uint32_t w
+        // assign byte to first byte of uint32_t w
+        w = (w >> 8) | (((uint32_t)*p) << 24);
         wi++;
         if (wi == 4) {
           FW_HEADER[flash_pos / 4] = w;
@@ -285,7 +323,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
 
     const uint8_t *p = buf + 1;
     while (p < buf + 64 && flash_pos < flash_len) {
-      w = (w >> 8) | (*p << 24);  // assign byte to first byte of uint32_t w
+      // assign byte to first byte of uint32_t w
+      w = (w >> 8) | (((uint32_t)*p) << 24);
       wi++;
       if (wi == 4) {
         if (flash_pos < FLASH_FWHEADER_LEN) {
@@ -329,7 +368,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       if (msg_id != 0x001B) {  // ButtonAck message (id 27)
         return;
       }
-      uint8_t hash[32];
+      uint8_t hash[32] = {0};
       compute_firmware_fingerprint(hdr, hash);
       layoutFirmwareFingerprint(hash);
       hash_check_ok = get_button_response();
@@ -347,7 +386,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       // erase storage
       erase_storage();
       // check erasure
-      uint8_t hash[32];
+      uint8_t hash[32] = {0};
       sha256_Raw(FLASH_PTR(FLASH_STORAGE_START), FLASH_STORAGE_LEN, hash);
       if (memcmp(hash,
                  "\x2d\x86\x4c\x0b\x78\x9a\x43\x21\x4e\xee\x85\x24\xd3\x18\x20"
@@ -359,9 +398,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         return;
       }
     }
-    flash_wait_for_last_operation();
-    flash_clear_status_flags();
-    flash_unlock();
+
+    flash_enter();
     // write firmware header only when hash was confirmed
     if (hash_check_ok) {
       for (size_t i = 0; i < FLASH_FWHEADER_LEN / sizeof(uint32_t); i++) {
@@ -373,14 +411,11 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         flash_program_word(FLASH_FWHEADER_START + i * sizeof(uint32_t), 0);
       }
     }
-    flash_wait_for_last_operation();
-    flash_lock();
+    flash_exit();
 
     flash_state = STATE_END;
     if (hash_check_ok) {
-      layoutDialog(&bmp_icon_ok, NULL, NULL, NULL, "New firmware",
-                   "successfully installed.", NULL, "You may now",
-                   "unplug your Trezor.", NULL);
+      show_unplug("New firmware", "successfully installed.");
       send_msg_success(dev);
       shutdown();
     } else {

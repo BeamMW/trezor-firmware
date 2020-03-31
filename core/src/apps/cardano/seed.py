@@ -1,8 +1,10 @@
+import storage
+import storage.cache
 from trezor import wire
 from trezor.crypto import bip32
 
 from apps.cardano import CURVE, SEED_NAMESPACE
-from apps.common import cache, mnemonic, storage
+from apps.common import mnemonic
 from apps.common.request_passphrase import protect_by_passphrase
 
 
@@ -29,28 +31,28 @@ class Keychain:
 
 
 async def _get_passphrase(ctx: wire.Context) -> bytes:
-    passphrase = cache.get_passphrase()
+    passphrase = storage.cache.get_passphrase()
     if passphrase is None:
         passphrase = await protect_by_passphrase(ctx)
-        cache.set_passphrase(passphrase)
+        storage.cache.set_passphrase(passphrase)
 
     return passphrase
 
 
 async def get_keychain(ctx: wire.Context) -> Keychain:
     if not storage.is_initialized():
-        raise wire.ProcessError("Device is not initialized")
+        raise wire.NotInitialized("Device is not initialized")
 
     if mnemonic.is_bip39():
         # derive the root node from mnemonic and passphrase
         passphrase = await _get_passphrase(ctx)
         root = bip32.from_mnemonic_cardano(mnemonic.get_secret().decode(), passphrase)
     else:
-        seed = cache.get_seed()
+        seed = storage.cache.get_seed()
         if seed is None:
             passphrase = await _get_passphrase(ctx)
             seed = mnemonic.get_seed(passphrase)
-            cache.set_seed(seed)
+            storage.cache.set_seed(seed)
         root = bip32.from_seed(seed, "ed25519 cardano seed")
 
     # derive the namespaced root node

@@ -1,8 +1,7 @@
+import storage.device
 from trezor import ui, workflow
 from trezor.crypto import bip39, slip39
 from trezor.messages import BackupType
-
-from apps.common import storage
 
 if False:
     from typing import Optional, Tuple
@@ -59,7 +58,7 @@ def _start_progress() -> None:
     # Because we are drawing to the screen manually, without a layout, we
     # should make sure that no other layout is running.  At this point, only
     # the homescreen should be on, so shut it down.
-    workflow.close_default()
+    workflow.kill_default()
     ui.backlight_fade(ui.BACKLIGHT_DIM)
     ui.display.clear()
     ui.header("Please wait")

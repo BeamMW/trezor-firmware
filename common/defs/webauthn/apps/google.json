@@ -1,5 +1,0 @@
-{
-  "label": "Google",
-  "u2f": "https://www.gstatic.com/securitykey/origins.json",
-  "webauthn": "google.com"
-}

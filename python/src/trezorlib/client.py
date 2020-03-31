@@ -132,9 +132,9 @@ class TrezorClient:
         self.session_counter += 1
 
     def close(self):
-        if self.session_counter == 1:
+        self.session_counter = max(self.session_counter - 1, 0)
+        if self.session_counter == 0:
             self.transport.end_session()
-        self.session_counter -= 1
 
     def cancel(self):
         self._raw_write(messages.Cancel())
@@ -337,7 +337,7 @@ class ProtocolMixin(object):
     reset_device = MovedTo("device.reset")
     backup_device = MovedTo("device.backup")
 
-    set_u2f_counter = MovedTo("device.set_u2f_counter")
+    set_u2f_counter = MovedTo("fido.set_counter")
 
     apply_settings = MovedTo("device.apply_settings")
     apply_flags = MovedTo("device.apply_flags")
@@ -386,8 +386,7 @@ class ProtocolMixin(object):
     decrypt_keyvalue = MovedTo("misc.decrypt_keyvalue")
 
     # Debug device functionality
-    load_device_by_mnemonic = MovedTo("debuglink.load_device_by_mnemonic")
-    load_device_by_xprv = MovedTo("debuglink.load_device_by_xprv")
+    load_device_by_mnemonic = MovedTo("debuglink.load_device")
 
 
 class BaseClient:

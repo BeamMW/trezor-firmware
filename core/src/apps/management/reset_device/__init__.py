@@ -1,3 +1,5 @@
+import storage
+import storage.device
 from trezor import config, wire
 from trezor.crypto import bip39, hashlib, random, slip39
 from trezor.messages import BackupType
@@ -7,7 +9,6 @@ from trezor.messages.Success import Success
 from trezor.pin import pin_to_int
 
 from apps.beam.nonce import create_master_nonce as create_beam_master_nonce
-from apps.common import storage
 from apps.management import backup_types
 from apps.management.change_pin import request_pin_confirm
 from apps.management.reset_device import layout
@@ -28,11 +29,11 @@ async def reset_device(ctx: wire.Context, msg: ResetDevice) -> Success:
     # make sure user knows they're setting up a new wallet
     await layout.show_reset_device_warning(ctx, msg.backup_type)
 
-    # request new PIN
+    # request and set new PIN
     if msg.pin_protection:
         newpin = await request_pin_confirm(ctx)
-    else:
-        newpin = ""
+        if not config.change_pin(pin_to_int(""), pin_to_int(newpin), None, None):
+            raise wire.ProcessError("Failed to set PIN")
 
     beam_nonce_seed = random.bytes(32)
     create_beam_master_nonce(beam_nonce_seed)
@@ -73,10 +74,6 @@ async def reset_device(ctx: wire.Context, msg: ResetDevice) -> Success:
     # generate and display backup information for the master secret
     if perform_backup:
         await backup_seed(ctx, msg.backup_type, secret)
-
-    # write PIN into storage
-    if not config.change_pin(pin_to_int(""), pin_to_int(newpin), None, None):
-        raise wire.ProcessError("Could not change PIN")
 
     # write settings and master secret into storage
     storage.device.load_settings(

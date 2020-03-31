@@ -1,183 +1,81 @@
-from micropython import const
-
+import storage.sd_salt
+from storage.sd_salt import SD_CARD_HOT_SWAPPABLE
 from trezor import io, ui, wire
-from trezor.crypto import hmac
-from trezor.crypto.hashlib import sha256
-from trezor.ui.confirm import Confirm
 from trezor.ui.text import Text
-from trezor.utils import consteq
 
-from apps.common import storage
-from apps.common.confirm import require_confirm
+from apps.common.confirm import confirm
 
 if False:
     from typing import Optional
 
 
-class SdProtectCancelled(Exception):
+class SdProtectCancelled(wire.ProcessError):
     pass
 
 
-SD_SALT_LEN_BYTES = const(32)
-SD_SALT_AUTH_TAG_LEN_BYTES = const(16)
-SD_SALT_AUTH_KEY_LEN_BYTES = const(16)
-
-
-async def wrong_card_dialog(ctx: Optional[wire.Context]) -> None:
+async def _wrong_card_dialog(ctx: wire.GenericContext) -> bool:
     text = Text("SD card protection", ui.ICON_WRONG)
     text.bold("Wrong SD card.")
     text.br_half()
-    text.normal("Please unplug the", "device and insert a", "different card.")
-    if ctx is None:
-        await Confirm(text, confirm=None, cancel="Close")
+    if SD_CARD_HOT_SWAPPABLE:
+        text.normal("Please insert the", "correct SD card for", "this device.")
+        btn_confirm = "Retry"  # type: Optional[str]
+        btn_cancel = "Abort"
     else:
-        await require_confirm(ctx, text, confirm=None, cancel="Close")
+        text.normal("Please unplug the", "device and insert the", "correct SD card.")
+        btn_confirm = None
+        btn_cancel = "Close"
+
+    return await confirm(ctx, text, confirm=btn_confirm, cancel=btn_cancel)
 
 
-async def insert_card_dialog(ctx: Optional[wire.Context]) -> None:
-    text = Text("SD card protection")
+async def insert_card_dialog(ctx: wire.GenericContext) -> bool:
+    text = Text("SD card protection", ui.ICON_WRONG)
     text.bold("SD card required.")
     text.br_half()
-    text.normal("Please unplug the", "device and insert your", "SD card.")
-    if ctx is None:
-        await Confirm(text, confirm=None, cancel="Close")
+    if SD_CARD_HOT_SWAPPABLE:
+        text.normal("Please insert your", "SD card.")
+        btn_confirm = "Retry"  # type: Optional[str]
+        btn_cancel = "Abort"
     else:
-        await require_confirm(ctx, text, confirm=None, cancel="Close")
+        text.normal("Please unplug the", "device and insert your", "SD card.")
+        btn_confirm = None
+        btn_cancel = "Close"
+
+    return await confirm(ctx, text, confirm=btn_confirm, cancel=btn_cancel)
+
+
+async def sd_problem_dialog(ctx: wire.GenericContext) -> bool:
+    text = Text("SD card protection", ui.ICON_WRONG, ui.RED)
+    text.normal("There was a problem", "accessing the SD card.")
+    return await confirm(ctx, text, confirm="Retry", cancel="Abort")
+
+
+async def ensure_sd_card(ctx: wire.GenericContext) -> None:
+    sd = io.SDCard()
+    while not sd.present():
+        if not await insert_card_dialog(ctx):
+            raise SdProtectCancelled("SD card required.")
 
 
 async def request_sd_salt(
-    ctx: Optional[wire.Context], salt_auth_key: bytes
-) -> bytearray:
-    device_dir = "/trezor/device_%s" % storage.device.get_device_id()
-    salt_path = "%s/salt" % device_dir
-    new_salt_path = "%s/salt.new" % device_dir
+    ctx: wire.GenericContext = wire.DUMMY_CONTEXT,
+) -> Optional[bytearray]:
+    if not storage.sd_salt.is_enabled():
+        return None
 
-    sd = io.SDCard()
-    fs = io.FatFS()
-    if not sd.power(True):
-        await insert_card_dialog(ctx)
-        raise SdProtectCancelled
-
-    try:
-        fs.mount()
-
-        # Load salt if it exists.
+    while True:
+        await ensure_sd_card(ctx)
         try:
-            with fs.open(salt_path, "r") as f:
-                salt = bytearray(SD_SALT_LEN_BYTES)  # type: Optional[bytearray]
-                salt_tag = bytearray(SD_SALT_AUTH_TAG_LEN_BYTES)
-                f.read(salt)
-                f.read(salt_tag)
+            return storage.sd_salt.load_sd_salt()
+        except storage.sd_salt.WrongSdCard:
+            if not await _wrong_card_dialog(ctx):
+                raise SdProtectCancelled("Wrong SD card.")
         except OSError:
-            salt = None
-
-        if salt is not None and consteq(
-            hmac.new(salt_auth_key, salt, sha256).digest()[:SD_SALT_AUTH_TAG_LEN_BYTES],
-            salt_tag,
-        ):
-            return salt
-
-        # Load salt.new if it exists.
-        try:
-            with fs.open(new_salt_path, "r") as f:
-                new_salt = bytearray(SD_SALT_LEN_BYTES)  # type: Optional[bytearray]
-                new_salt_tag = bytearray(SD_SALT_AUTH_TAG_LEN_BYTES)
-                f.read(new_salt)
-                f.read(new_salt_tag)
-        except OSError:
-            new_salt = None
-
-        if new_salt is not None and consteq(
-            hmac.new(salt_auth_key, new_salt, sha256).digest()[
-                :SD_SALT_AUTH_TAG_LEN_BYTES
-            ],
-            new_salt_tag,
-        ):
-            # SD salt regeneration was interrupted earlier. Bring into consistent state.
-            # TODO Possibly overwrite salt file with random data.
-            try:
-                fs.unlink(salt_path)
-            except OSError:
-                pass
-            fs.rename(new_salt_path, salt_path)
-            return new_salt
-    finally:
-        fs.unmount()
-        sd.power(False)
-
-    await wrong_card_dialog(ctx)
-    raise SdProtectCancelled
-
-
-async def set_sd_salt(
-    ctx: Optional[wire.Context], salt: bytes, salt_tag: bytes, filename: str = "salt"
-) -> None:
-    device_dir = "/trezor/device_%s" % storage.device.get_device_id()
-    salt_path = "%s/%s" % (device_dir, filename)
-
-    sd = io.SDCard()
-    if not sd.power(True):
-        await insert_card_dialog(ctx)
-        raise SdProtectCancelled
-
-    fs = io.FatFS()
-
-    try:
-        fs.mount()
-        fs.mkdir("/trezor", True)
-        fs.mkdir(device_dir, True)
-        with fs.open(salt_path, "w") as f:
-            f.write(salt)
-            f.write(salt_tag)
-    finally:
-        fs.unmount()
-        sd.power(False)
-
-
-async def stage_sd_salt(
-    ctx: Optional[wire.Context], salt: bytes, salt_tag: bytes
-) -> None:
-    await set_sd_salt(ctx, salt, salt_tag, "salt.new")
-
-
-async def commit_sd_salt(ctx: Optional[wire.Context]) -> None:
-    device_dir = "/trezor/device_%s" % storage.device.get_device_id()
-    salt_path = "%s/salt" % device_dir
-    new_salt_path = "%s/salt.new" % device_dir
-
-    sd = io.SDCard()
-    fs = io.FatFS()
-    if not sd.power(True):
-        await insert_card_dialog(ctx)
-        raise SdProtectCancelled
-
-    try:
-        fs.mount()
-        # TODO Possibly overwrite salt file with random data.
-        try:
-            fs.unlink(salt_path)
-        except OSError:
-            pass
-        fs.rename(new_salt_path, salt_path)
-    finally:
-        fs.unmount()
-        sd.power(False)
-
-
-async def remove_sd_salt(ctx: Optional[wire.Context]) -> None:
-    device_dir = "/trezor/device_%s" % storage.device.get_device_id()
-    salt_path = "%s/salt" % device_dir
-
-    sd = io.SDCard()
-    fs = io.FatFS()
-    if not sd.power(True):
-        await insert_card_dialog(ctx)
-        raise SdProtectCancelled
-
-    try:
-        fs.mount()
-        # TODO Possibly overwrite salt file with random data.
-        fs.unlink(salt_path)
-    finally:
-        fs.unmount()
-        sd.power(False)
+            # Either the SD card did not power on, or the filesystem could not be
+            # mounted (card is not formatted?), or there is a staged salt file and
+            # we could not commit it.
+            # In either case, there is no good way to recover. If the user clicks Retry,
+            # we will try again.
+            if not await sd_problem_dialog(ctx):
+                raise

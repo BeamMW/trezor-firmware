@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "messages-common.pb.h"
 #include "messages.pb.h"
 
 #include "aes/aes.h"
@@ -56,28 +57,28 @@ static const uint32_t META_MAGIC_V10 = 0x525a5254;  // 'TRZR' as uint32_t
 static const uint32_t META_MAGIC_V10 = 0xFFFFFFFF;
 #endif
 
-#define APP 0x0100
-#define FLAG_PUBLIC 0x8000
-#define FLAGS_WRITE 0xC000
+#define APP (0x01 << 8)
+#define FLAG_PUBLIC_SHIFTED (FLAG_PUBLIC << 8)
+#define FLAGS_WRITE_SHIFTED (FLAGS_WRITE << 8)
 
-#define KEY_UUID (0 | APP | FLAG_PUBLIC)                   // bytes(12)
-#define KEY_VERSION (1 | APP)                              // uint32
-#define KEY_MNEMONIC (2 | APP)                             // string(241)
-#define KEY_LANGUAGE (3 | APP | FLAG_PUBLIC)               // string(17)
-#define KEY_LABEL (4 | APP | FLAG_PUBLIC)                  // string(33)
-#define KEY_PASSPHRASE_PROTECTION (5 | APP | FLAG_PUBLIC)  // bool
-#define KEY_HOMESCREEN (6 | APP | FLAG_PUBLIC)             // bytes(1024)
-#define KEY_NEEDS_BACKUP (7 | APP)                         // bool
-#define KEY_FLAGS (8 | APP)                                // uint32
-#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE)            // uint32
-#define KEY_UNFINISHED_BACKUP (11 | APP)                   // bool
-#define KEY_AUTO_LOCK_DELAY_MS (12 | APP)                  // uint32
-#define KEY_NO_BACKUP (13 | APP)                           // bool
-#define KEY_INITIALIZED (14 | APP | FLAG_PUBLIC)           // uint32
-#define KEY_NODE (15 | APP)                                // node
-#define KEY_IMPORTED (16 | APP)                            // bool
-#define KEY_U2F_ROOT (17 | APP | FLAG_PUBLIC)              // node
-#define KEY_DEBUG_LINK_PIN (255 | APP | FLAG_PUBLIC)       // string(10)
+#define KEY_UUID (0 | APP | FLAG_PUBLIC_SHIFTED)      // bytes(12)
+#define KEY_VERSION (1 | APP)                         // uint32
+#define KEY_MNEMONIC (2 | APP)                        // string(241)
+#define KEY_LANGUAGE (3 | APP | FLAG_PUBLIC_SHIFTED)  // string(17)
+#define KEY_LABEL (4 | APP | FLAG_PUBLIC_SHIFTED)     // string(33)
+#define KEY_PASSPHRASE_PROTECTION (5 | APP | FLAG_PUBLIC_SHIFTED)  // bool
+#define KEY_HOMESCREEN (6 | APP | FLAG_PUBLIC_SHIFTED)        // bytes(1024)
+#define KEY_NEEDS_BACKUP (7 | APP)                            // bool
+#define KEY_FLAGS (8 | APP)                                   // uint32
+#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE_SHIFTED)       // uint32
+#define KEY_UNFINISHED_BACKUP (11 | APP)                      // bool
+#define KEY_AUTO_LOCK_DELAY_MS (12 | APP)                     // uint32
+#define KEY_NO_BACKUP (13 | APP)                              // bool
+#define KEY_INITIALIZED (14 | APP | FLAG_PUBLIC_SHIFTED)      // uint32
+#define KEY_NODE (15 | APP)                                   // node
+#define KEY_IMPORTED (16 | APP)                               // bool
+#define KEY_U2F_ROOT (17 | APP | FLAG_PUBLIC_SHIFTED)         // node
+#define KEY_DEBUG_LINK_PIN (255 | APP | FLAG_PUBLIC_SHIFTED)  // string(10)
 
 // The PIN value corresponding to an empty PIN.
 static const uint32_t PIN_EMPTY = 1;
@@ -85,7 +86,7 @@ static const uint32_t PIN_EMPTY = 1;
 static uint32_t config_uuid[UUID_SIZE / sizeof(uint32_t)];
 _Static_assert(sizeof(config_uuid) == UUID_SIZE, "config_uuid has wrong size");
 
-char config_uuid_str[2 * UUID_SIZE + 1];
+char config_uuid_str[2 * UUID_SIZE + 1] = {0};
 
 /*
  Old storage layout:
@@ -438,32 +439,12 @@ static void config_compute_u2froot(const char *mnemonic,
   session_clear(false);  // invalidate seed cache
 }
 
-static void config_setNode(const HDNodeType *node) {
-  StorageHDNode storageHDNode;
-  memzero(&storageHDNode, sizeof(storageHDNode));
-
-  storageHDNode.depth = node->depth;
-  storageHDNode.fingerprint = node->fingerprint;
-  storageHDNode.child_num = node->child_num;
-  storageHDNode.chain_code.size = 32;
-  memcpy(storageHDNode.chain_code.bytes, node->chain_code.bytes, 32);
-
-  if (node->has_private_key) {
-    storageHDNode.has_private_key = true;
-    storageHDNode.private_key.size = 32;
-    memcpy(storageHDNode.private_key.bytes, node->private_key.bytes, 32);
-  }
-  if (sectrue == storage_set(KEY_NODE, &storageHDNode, sizeof(storageHDNode))) {
-    config_set_bool(KEY_INITIALIZED, true);
-  }
-  memzero(&storageHDNode, sizeof(storageHDNode));
-}
-
 #if DEBUG_LINK
+
 bool config_dumpNode(HDNodeType *node) {
   memzero(node, sizeof(HDNodeType));
 
-  StorageHDNode storageNode;
+  StorageHDNode storageNode = {0};
   uint16_t len = 0;
   if (sectrue !=
           storage_get(KEY_NODE, &storageNode, sizeof(storageNode), &len) ||
@@ -488,7 +469,6 @@ bool config_dumpNode(HDNodeType *node) {
   memzero(&storageNode, sizeof(storageNode));
   return true;
 }
-#endif
 
 void config_loadDevice(const LoadDevice *msg) {
   session_clear(false);
@@ -500,10 +480,7 @@ void config_loadDevice(const LoadDevice *msg) {
     config_changePin("", msg->pin);
   }
 
-  if (msg->has_node) {
-    storage_delete(KEY_MNEMONIC);
-    config_setNode(&(msg->node));
-  } else if (msg->mnemonics_count) {
+  if (msg->mnemonics_count) {
     storage_delete(KEY_NODE);
     config_setMnemonic(msg->mnemonics[0]);
   }
@@ -517,7 +494,17 @@ void config_loadDevice(const LoadDevice *msg) {
   if (msg->has_u2f_counter) {
     config_setU2FCounter(msg->u2f_counter);
   }
+
+  if (msg->has_needs_backup) {
+    config_setNeedsBackup(msg->needs_backup);
+  }
+
+  if (msg->has_no_backup && msg->no_backup) {
+    config_setNoBackup();
+  }
 }
+
+#endif
 
 void config_setLabel(const char *label) {
   if (label == NULL || label[0] == '\0') {
@@ -533,7 +520,7 @@ void config_setLanguage(const char *lang) {
   }
 
   // Sanity check.
-  if (strcmp(lang, "english") != 0) {
+  if (strcmp(lang, "en-US") != 0) {
     return;
   }
   storage_set(KEY_LANGUAGE, lang, strnlen(lang, MAX_LANGUAGE_LEN));
@@ -571,7 +558,7 @@ const uint8_t *config_getSeed(bool usePassphrase) {
   }
 
   // if storage has mnemonic, convert it to node and use it
-  char mnemonic[MAX_MNEMONIC_LEN + 1];
+  char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
   if (config_getMnemonic(mnemonic, sizeof(mnemonic))) {
     if (usePassphrase && !protectPassphrase()) {
       memzero(mnemonic, sizeof(mnemonic));
@@ -607,7 +594,7 @@ static bool config_loadNode(const StorageHDNode *node, const char *curve,
 }
 
 bool config_getU2FRoot(HDNode *node) {
-  StorageHDNode u2fNode;
+  StorageHDNode u2fNode = {0};
   uint16_t len = 0;
   if (sectrue != storage_get(KEY_U2F_ROOT, &u2fNode, sizeof(u2fNode), &len) ||
       len != sizeof(StorageHDNode)) {
@@ -621,7 +608,7 @@ bool config_getU2FRoot(HDNode *node) {
 
 bool config_getRootNode(HDNode *node, const char *curve, bool usePassphrase) {
   // if storage has node, decrypt and use it
-  StorageHDNode storageHDNode;
+  StorageHDNode storageHDNode = {0};
   uint16_t len = 0;
   if (strcmp(curve, SECP256K1_NAME) == 0 &&
       sectrue ==
@@ -640,8 +627,8 @@ bool config_getRootNode(HDNode *node, const char *curve, bool usePassphrase) {
     if (passphrase_protection && sectrue == sessionPassphraseCached &&
         sessionPassphrase[0] != '\0') {
       // decrypt hd node
-      uint8_t secret[64];
-      PBKDF2_HMAC_SHA512_CTX pctx;
+      uint8_t secret[64] = {0};
+      PBKDF2_HMAC_SHA512_CTX pctx = {0};
       char oldTiny = usbTiny(1);
       pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t *)sessionPassphrase,
                               strlen(sessionPassphrase),
@@ -654,7 +641,7 @@ bool config_getRootNode(HDNode *node, const char *curve, bool usePassphrase) {
       }
       pbkdf2_hmac_sha512_Final(&pctx, secret);
       usbTiny(oldTiny);
-      aes_decrypt_ctx ctx;
+      aes_decrypt_ctx ctx = {0};
       aes_decrypt_key256(secret, &ctx);
       aes_cbc_decrypt(node->chain_code, node->chain_code, 32, secret + 32,
                       &ctx);
@@ -678,7 +665,17 @@ bool config_getLabel(char *dest, uint16_t dest_size) {
 }
 
 bool config_getLanguage(char *dest, uint16_t dest_size) {
-  return sectrue == config_get_string(KEY_LANGUAGE, dest, dest_size);
+  if (sectrue == config_get_string(KEY_LANGUAGE, dest, dest_size)) {
+    if (dest_size == 7 && (strcmp(dest, "english") != 0)) {
+      // fallthrough -> return "en-US"
+    } else {
+      // other language -> return the value
+      return true;
+    }
+  }
+  strcpy(dest, "en-US");
+  dest_size = 5;
+  return true;
 }
 
 bool config_getHomescreen(uint8_t *dest, uint16_t dest_size) {
@@ -700,7 +697,7 @@ bool config_setMnemonic(const char *mnemonic) {
     return false;
   }
 
-  StorageHDNode u2fNode;
+  StorageHDNode u2fNode = {0};
   memzero(&u2fNode, sizeof(u2fNode));
   config_compute_u2froot(mnemonic, &u2fNode);
   secbool ret = storage_set(KEY_U2F_ROOT, &u2fNode, sizeof(u2fNode));
@@ -730,18 +727,18 @@ bool config_getMnemonic(char *dest, uint16_t dest_size) {
  */
 bool config_containsMnemonic(const char *mnemonic) {
   uint16_t len = 0;
-  uint8_t stored_mnemonic[MAX_MNEMONIC_LEN];
+  uint8_t stored_mnemonic[MAX_MNEMONIC_LEN] = {0};
   if (sectrue != storage_get(KEY_MNEMONIC, stored_mnemonic,
                              sizeof(stored_mnemonic), &len)) {
     return false;
   }
 
   // Compare the digests to mitigate side-channel attacks.
-  uint8_t digest_stored[SHA256_DIGEST_LENGTH];
+  uint8_t digest_stored[SHA256_DIGEST_LENGTH] = {0};
   sha256_Raw(stored_mnemonic, len, digest_stored);
   memzero(stored_mnemonic, sizeof(stored_mnemonic));
 
-  uint8_t digest_input[SHA256_DIGEST_LENGTH];
+  uint8_t digest_input[SHA256_DIGEST_LENGTH] = {0};
   sha256_Raw((const uint8_t *)mnemonic, strnlen(mnemonic, MAX_MNEMONIC_LEN),
              digest_input);
 
@@ -798,6 +795,22 @@ bool config_getPin(char *dest, uint16_t dest_size) {
 }
 #endif
 
+bool config_hasWipeCode(void) { return sectrue == storage_has_wipe_code(); }
+
+bool config_changeWipeCode(const char *pin, const char *wipe_code) {
+  uint32_t wipe_code_int = pin_to_int(wipe_code);
+  if (wipe_code_int == 0) {
+    return false;
+  }
+
+  char oldTiny = usbTiny(1);
+  secbool ret = storage_change_wipe_code(pin_to_int(pin), NULL, wipe_code_int);
+  usbTiny(oldTiny);
+
+  memzero(&wipe_code_int, sizeof(wipe_code_int));
+  return sectrue == ret;
+}
+
 void session_cachePassphrase(const char *passphrase) {
   strlcpy(sessionPassphrase, passphrase, sizeof(sessionPassphrase));
   sessionPassphraseCached = sectrue;
@@ -823,7 +836,7 @@ bool session_getState(const uint8_t *salt, uint8_t *state,
   }
   // state[0:32] = salt
   // state[32:64] = HMAC(passphrase, salt || device_id)
-  HMAC_SHA256_CTX ctx;
+  HMAC_SHA256_CTX ctx = {0};
   hmac_sha256_Init(&ctx, (const uint8_t *)passphrase, strlen(passphrase));
   hmac_sha256_Update(&ctx, state, 32);
   hmac_sha256_Update(&ctx, (const uint8_t *)config_uuid, sizeof(config_uuid));

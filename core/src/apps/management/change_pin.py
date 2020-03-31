@@ -1,3 +1,4 @@
+from storage import is_initialized
 from trezor import config, ui, wire
 from trezor.messages.Success import Success
 from trezor.pin import pin_to_int
@@ -9,6 +10,7 @@ from apps.common.request_pin import (
     request_pin_and_sd_salt,
     request_pin_confirm,
     show_pin_invalid,
+    show_pin_matches_wipe_code,
 )
 
 if False:
@@ -16,6 +18,9 @@ if False:
 
 
 async def change_pin(ctx: wire.Context, msg: ChangePin) -> Success:
+    if not is_initialized():
+        raise wire.NotInitialized("Device is not initialized")
+
     # confirm that user wants to change the pin
     await require_confirm_change_pin(ctx, msg)
 
@@ -36,7 +41,10 @@ async def change_pin(ctx: wire.Context, msg: ChangePin) -> Success:
 
     # write into storage
     if not config.change_pin(pin_to_int(curpin), pin_to_int(newpin), salt, salt):
-        await show_pin_invalid(ctx)
+        if newpin:
+            await show_pin_matches_wipe_code(ctx)
+        else:
+            await show_pin_invalid(ctx)
         raise wire.PinInvalid("PIN invalid")
 
     if newpin:

@@ -167,6 +167,9 @@ void fsm_sendFailure(FailureType code, const char *text)
       case FailureType_Failure_PinMismatch:
         text = _("PIN mismatch");
         break;
+      case FailureType_Failure_WipeCodeMismatch:
+        text = _("Wipe code mismatch");
+        break;
       case FailureType_Failure_FirmwareError:
         text = _("Firmware error");
         break;
@@ -188,7 +191,7 @@ void fsm_sendFailure(FailureType code, const char *text)
 }
 
 static const CoinInfo *fsm_getCoin(bool has_name, const char *name) {
-  const CoinInfo *coin;
+  const CoinInfo *coin = NULL;
   if (has_name) {
     coin = coinByName(name);
   } else {

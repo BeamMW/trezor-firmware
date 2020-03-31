@@ -39,7 +39,7 @@ bool protectAbortedByCancel = false;
 bool protectAbortedByInitialize = false;
 
 bool protectButton(ButtonRequestType type, bool confirm_only) {
-  ButtonRequest resp;
+  ButtonRequest resp = {0};
   bool result = false;
   bool acked = false;
 #if DEBUG_LINK
@@ -112,7 +112,7 @@ bool protectButton(ButtonRequestType type, bool confirm_only) {
 }
 
 const char *requestPin(PinMatrixRequestType type, const char *text) {
-  PinMatrixRequest resp;
+  PinMatrixRequest resp = {0};
   memzero(&resp, sizeof(PinMatrixRequest));
   resp.has_type = true;
   resp.type = type;
@@ -271,6 +271,80 @@ bool protectChangePin(bool removal) {
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));
   if (ret == false) {
+    if (removal) {
+      fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
+    } else {
+      fsm_sendFailure(FailureType_Failure_ProcessError,
+                      _("The new PIN must be different from your wipe code."));
+    }
+  }
+  return ret;
+}
+
+bool protectChangeWipeCode(bool removal) {
+  static CONFIDENTIAL char pin[MAX_PIN_LEN + 1] = "";
+  static CONFIDENTIAL char wipe_code[MAX_PIN_LEN + 1] = "";
+  const char *input = NULL;
+
+  if (config_hasPin()) {
+    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_Current,
+                       _("Please enter your PIN:"));
+    if (input == NULL) {
+      fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
+      return false;
+    }
+
+    // If removing, defer the check to config_changeWipeCode().
+    if (!removal) {
+      usbTiny(1);
+      bool ret = config_unlock(input);
+      usbTiny(0);
+      if (ret == false) {
+        fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
+        return false;
+      }
+    }
+
+    strlcpy(pin, input, sizeof(pin));
+  }
+
+  if (!removal) {
+    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeFirst,
+                       _("Enter new wipe code:"));
+    if (input == NULL) {
+      memzero(pin, sizeof(pin));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
+      return false;
+    }
+    if (strncmp(pin, input, sizeof(pin)) == 0) {
+      memzero(pin, sizeof(pin));
+      fsm_sendFailure(FailureType_Failure_ProcessError,
+                      _("The wipe code must be different from your PIN."));
+      return false;
+    }
+    strlcpy(wipe_code, input, sizeof(wipe_code));
+
+    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeSecond,
+                       _("Re-enter new wipe code:"));
+    if (input == NULL) {
+      memzero(pin, sizeof(pin));
+      memzero(wipe_code, sizeof(wipe_code));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
+      return false;
+    }
+
+    if (strncmp(wipe_code, input, sizeof(wipe_code)) != 0) {
+      memzero(pin, sizeof(pin));
+      memzero(wipe_code, sizeof(wipe_code));
+      fsm_sendFailure(FailureType_Failure_WipeCodeMismatch, NULL);
+      return false;
+    }
+  }
+
+  bool ret = config_changeWipeCode(pin, wipe_code);
+  memzero(pin, sizeof(pin));
+  memzero(wipe_code, sizeof(wipe_code));
+  if (ret == false) {
     fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
   }
   return ret;
@@ -283,7 +357,7 @@ bool protectPassphrase(void) {
     return true;
   }
 
-  PassphraseRequest resp;
+  PassphraseRequest resp = {0};
   memzero(&resp, sizeof(PassphraseRequest));
   usbTiny(1);
   msg_write(MessageType_MessageType_PassphraseRequest, &resp);

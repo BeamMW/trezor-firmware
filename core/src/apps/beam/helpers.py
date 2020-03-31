@@ -1,6 +1,9 @@
+import storage
+
+from trezor import wire
 from trezor.crypto import beam, random
 
-from apps.common import storage
+from apps.common import mnemonic
 
 
 def BBS_KEY():
@@ -19,11 +22,14 @@ def bin_to_str(binary_data):
     return "".join("{:02x}".format(x) for x in binary_data)
 
 
-def get_beam_kdf(mnemonic=None):
-    if mnemonic is None:
+def get_beam_kdf(mnemonic_phrase=None):
+    if not storage.is_initialized():
+        raise wire.NotInitialized("Device is not initialized")
+
+    if mnemonic_phrase is None:
         # Get kdf
-        mnemonic = storage.device.get_mnemonic_secret()
-    seed = beam.from_mnemonic_beam(mnemonic)
+        mnemonic_phrase = mnemonic.get_secret()
+    seed = beam.from_mnemonic_beam(mnemonic_phrase)
     seed_size = 32
     secret_key = bytearray(32)
     cofactor = bytearray(32)

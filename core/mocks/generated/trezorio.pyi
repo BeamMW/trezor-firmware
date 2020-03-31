@@ -7,7 +7,17 @@ class FatFSFile:
     Class encapsulating file
     """
 
-    def __exit__(self) -> None:
+    def __enter__(self) -> FatFSFile:
+        """
+        Return an open file object
+        """
+    from types import TracebackType
+
+    def __exit__(
+        self, type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         """
         Close an open file object
         """
@@ -22,7 +32,7 @@ class FatFSFile:
         Read data from the file
         """
 
-    def write(self, data: bytearray) -> int:
+    def write(self, data: Union[bytes, bytearray]) -> int:
         """
         Write data to the file
         """
@@ -44,7 +54,7 @@ class FatFSFile:
 
 
 # extmod/modtrezorio/modtrezorio-fatfs.h
-class FatFSDir(Iterable[Tuple[int, str, str]]):
+class FatFSDir(Iterator[Tuple[int, str, str]]):
     """
     Class encapsulating directory
     """

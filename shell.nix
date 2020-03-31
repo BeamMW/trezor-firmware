@@ -7,21 +7,36 @@ stdenv.mkDerivation {
     SDL2_image
     autoflake
     check
-    clang-tools
+    clang
     gcc
-    gcc-arm-embedded
     gnumake
     graphviz
+    libffi
+    libjpeg
+    libressl
     libusb1
-    openssl
     pipenv
     pkgconfig
-    protobuf
+    protobuf3_6
     scons
     valgrind
     zlib
+  ] ++ stdenv.lib.optionals (!stdenv.isDarwin) [
+    gcc-arm-embedded
+  ] ++ stdenv.lib.optionals (stdenv.isDarwin) [
+    darwin.apple_sdk.frameworks.CoreAudio
+    darwin.apple_sdk.frameworks.AudioToolbox
+    darwin.apple_sdk.frameworks.ForceFeedback
+    darwin.apple_sdk.frameworks.CoreVideo
+    darwin.apple_sdk.frameworks.Cocoa
+    darwin.apple_sdk.frameworks.Carbon
+    darwin.apple_sdk.frameworks.IOKit
+    darwin.apple_sdk.frameworks.QuartzCore
+    darwin.apple_sdk.frameworks.Metal
+    darwin.libobjc
+    libiconv
   ];
-  LD_LIBRARY_PATH="${libusb1}/lib";
+  LD_LIBRARY_PATH="${libffi}/lib:${libjpeg.out}/lib:${libusb1}/lib:${libressl.out}/lib";
   shellHook = ''
     pipenv shell
     exit

@@ -74,6 +74,12 @@ test_emu_monero: ## run selected monero device tests from monero-agent
 test_emu_u2f: ## run selected u2f device tests from u2f-tests-hid
 	cd tests ; ./run_tests_device_emu_u2f.sh $(TESTOPTS)
 
+test_emu_fido2: ## run fido2 device tests
+	cd tests ; ./run_tests_device_emu_fido2.sh $(TESTOPTS)
+
+test_emu_click: ## run click tests
+	cd tests ; ./run_tests_click_emu.sh $(TESTOPTS)
+
 pylint: ## run pylint on application sources and tests
 	pylint -E $(shell find src tests -name *.py)
 
@@ -124,6 +130,7 @@ build_cross: ## build mpy-cross port
 ## clean commands:
 
 clean: clean_boardloader clean_bootloader clean_prodtest clean_firmware clean_unix clean_cross ## clean all
+	rm -f ".sconsign.dblite"
 
 clean_boardloader: ## clean boardloader build
 	rm -rf $(BOARDLOADER_BUILD_DIR)

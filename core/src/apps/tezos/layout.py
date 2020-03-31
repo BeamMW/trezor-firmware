@@ -5,7 +5,7 @@ from trezor.ui.text import Text
 from trezor.utils import chunks, format_amount
 
 from apps.common.confirm import require_confirm, require_hold_to_confirm
-from apps.tezos.helpers import TEZOS_AMOUNT_DIVISIBILITY
+from apps.tezos.helpers import TEZOS_AMOUNT_DECIMALS
 
 
 async def require_confirm_tx(ctx, to, value):
@@ -72,7 +72,7 @@ def split_proposal(proposal):
 
 
 def format_tezos_amount(value):
-    formatted_value = format_amount(value, TEZOS_AMOUNT_DIVISIBILITY)
+    formatted_value = format_amount(value, TEZOS_AMOUNT_DECIMALS)
     return formatted_value + " XTZ"
 
 
@@ -99,3 +99,17 @@ async def require_confirm_proposals(ctx, proposals):
     paginated = Paginated(pages)
 
     await require_confirm(ctx, paginated, ButtonRequestType.SignTx)
+
+
+async def require_confirm_delegation_manager_withdraw(ctx, address):
+    text = Text("Cancel delegation", ui.ICON_RECEIVE, icon_color=ui.RED)
+    text.bold("Delegator:")
+    text.mono(*split_address(address))
+    await require_confirm(ctx, text, ButtonRequestType.SignTx)
+
+
+async def require_confirm_manager_remove_delegate(ctx, fee):
+    text = Text("Cancel delegation", ui.ICON_RECEIVE, ui.RED)
+    text.normal("Fee:")
+    text.bold(format_tezos_amount(fee))
+    await require_hold_to_confirm(ctx, text, ButtonRequestType.SignTx)

@@ -1,3 +1,4 @@
+import storage.recovery
 from trezor import ui, wire
 from trezor.crypto.slip39 import MAX_SHARE_COUNT
 from trezor.messages import BackupType, ButtonRequestType
@@ -11,7 +12,6 @@ from .keyboard_bip39 import Bip39Keyboard
 from .keyboard_slip39 import Slip39Keyboard
 from .recover import RecoveryAborted
 
-from apps.common import storage
 from apps.common.confirm import confirm, info_confirm, require_confirm
 from apps.common.layout import show_success, show_warning
 from apps.management import backup_types
@@ -21,11 +21,11 @@ if __debug__:
     from apps.debug import input_signal
 
 if False:
-    from typing import List, Optional, Callable
+    from typing import List, Optional, Callable, Iterable, Tuple, Union
     from trezor.messages.ResetDevice import EnumTypeBackupType
 
 
-async def confirm_abort(ctx: wire.Context, dry_run: bool = False) -> bool:
+async def confirm_abort(ctx: wire.GenericContext, dry_run: bool = False) -> bool:
     if dry_run:
         text = Text("Abort seed check", ui.ICON_WIPE)
         text.normal("Do you really want to", "abort the seed check?")
@@ -36,7 +36,7 @@ async def confirm_abort(ctx: wire.Context, dry_run: bool = False) -> bool:
     return await confirm(ctx, text, code=ButtonRequestType.ProtectCall)
 
 
-async def request_word_count(ctx: wire.Context, dry_run: bool) -> int:
+async def request_word_count(ctx: wire.GenericContext, dry_run: bool) -> int:
     await ctx.call(ButtonRequest(code=ButtonRequestType.MnemonicWordCount), ButtonAck)
 
     if dry_run:
@@ -51,18 +51,20 @@ async def request_word_count(ctx: wire.Context, dry_run: bool) -> int:
     else:
         count = await ctx.wait(WordSelector(text))
 
-    return count
+    return count  # type: ignore
 
 
 async def request_mnemonic(
-    ctx: wire.Context, word_count: int, backup_type: Optional[EnumTypeBackupType]
+    ctx: wire.GenericContext, word_count: int, backup_type: Optional[EnumTypeBackupType]
 ) -> Optional[str]:
     await ctx.call(ButtonRequest(code=ButtonRequestType.MnemonicInput), ButtonAck)
 
-    words = []
+    words = []  # type: List[str]
     for i in range(word_count):
         if backup_types.is_slip39_word_count(word_count):
-            keyboard = Slip39Keyboard("Type word %s of %s:" % (i + 1, word_count))
+            keyboard = Slip39Keyboard(
+                "Type word %s of %s:" % (i + 1, word_count)
+            )  # type: Union[Slip39Keyboard, Bip39Keyboard]
         else:
             keyboard = Bip39Keyboard("Type word %s of %s:" % (i + 1, word_count))
         if __debug__:
@@ -79,7 +81,7 @@ async def request_mnemonic(
 
 
 async def check_word_validity(
-    ctx: wire.Context,
+    ctx: wire.GenericContext,
     current_index: int,
     current_word: str,
     backup_type: Optional[EnumTypeBackupType],
@@ -113,7 +115,6 @@ async def check_word_validity(
                     await show_share_already_added(ctx)
                     return False
     elif backup_type == BackupType.Slip39_Advanced:
-        # in case of advanced slip39 recovery we only check 2 words
         if current_index < 2:
             share_list = next(s for s in previous_mnemonics if s)[0].split(" ")
             if share_list[current_index] != current_word:
@@ -127,6 +128,8 @@ async def check_word_validity(
                         remaining_shares = (
                             storage.recovery.fetch_slip39_remaining_shares()
                         )
+                        # if backup_type is not None, some share was already entered -> remaining needs to be set
+                        assert remaining_shares is not None
                         if remaining_shares[i] == 0:
                             await show_group_threshold_reached(ctx)
                             return False
@@ -140,7 +143,7 @@ async def check_word_validity(
                     if group_identifier_word == group[0].split(" ")[2]:
                         group_index = i
 
-            if group_index:
+            if group_index is not None:
                 group = previous_mnemonics[group_index]
                 for share in group:
                     if current_word == share.split(" ")[current_index]:
@@ -151,12 +154,12 @@ async def check_word_validity(
 
 
 async def show_remaining_shares(
-    ctx: wire.Context,
-    groups: List[int, List[str]],  # remaining + list 3 words
+    ctx: wire.GenericContext,
+    groups: Iterable[Tuple[int, Tuple[str, ...]]],  # remaining + list 3 words
     shares_remaining: List[int],
     group_threshold: int,
 ) -> None:
-    pages = []
+    pages = []  # type: List[ui.Component]
     for remaining, group in groups:
         if 0 < remaining < MAX_SHARE_COUNT:
             text = Text("Remaining Shares")
@@ -179,12 +182,11 @@ async def show_remaining_shares(
             for word in group:
                 text.normal(word)
             pages.append(text)
-
-    return await confirm(ctx, Paginated(pages), cancel=None)
+    await confirm(ctx, Paginated(pages), cancel=None)
 
 
 async def show_group_share_success(
-    ctx: wire.Context, share_index: int, group_index: int
+    ctx: wire.GenericContext, share_index: int, group_index: int
 ) -> None:
     text = Text("Success", ui.ICON_CONFIRM)
     text.bold("You have entered")
@@ -192,10 +194,12 @@ async def show_group_share_success(
     text.normal("from")
     text.bold("Group %s" % (group_index + 1))
 
-    return await confirm(ctx, text, confirm="Continue", cancel=None)
+    await confirm(ctx, text, confirm="Continue", cancel=None)
 
 
-async def show_dry_run_result(ctx: wire.Context, result: bool, is_slip39: bool) -> None:
+async def show_dry_run_result(
+    ctx: wire.GenericContext, result: bool, is_slip39: bool
+) -> None:
     if result:
         if is_slip39:
             text = (
@@ -230,7 +234,7 @@ async def show_dry_run_result(ctx: wire.Context, result: bool, is_slip39: bool) 
         await show_warning(ctx, text, button="Continue")
 
 
-async def show_dry_run_different_type(ctx: wire.Context) -> None:
+async def show_dry_run_different_type(ctx: wire.GenericContext) -> None:
     text = Text("Dry run failure", ui.ICON_CANCEL)
     text.normal("Seed in the device was")
     text.normal("created using another")
@@ -240,26 +244,26 @@ async def show_dry_run_different_type(ctx: wire.Context) -> None:
     )
 
 
-async def show_invalid_mnemonic(ctx: wire.Context, word_count: int) -> None:
+async def show_invalid_mnemonic(ctx: wire.GenericContext, word_count: int) -> None:
     if backup_types.is_slip39_word_count(word_count):
         await show_warning(ctx, ("You have entered", "an invalid recovery", "share."))
     else:
         await show_warning(ctx, ("You have entered", "an invalid recovery", "seed."))
 
 
-async def show_share_already_added(ctx: wire.Context) -> None:
+async def show_share_already_added(ctx: wire.GenericContext) -> None:
     await show_warning(
         ctx, ("Share already entered,", "please enter", "a different share.")
     )
 
 
-async def show_identifier_mismatch(ctx: wire.Context) -> None:
+async def show_identifier_mismatch(ctx: wire.GenericContext) -> None:
     await show_warning(
         ctx, ("You have entered", "a share from another", "Shamir Backup.")
     )
 
 
-async def show_group_threshold_reached(ctx: wire.Context) -> None:
+async def show_group_threshold_reached(ctx: wire.GenericContext) -> None:
     await show_warning(
         ctx,
         (
@@ -305,9 +309,14 @@ class RecoveryHomescreen(ui.Component):
 
         self.repaint = False
 
+    if __debug__:
+
+        def read_content(self) -> List[str]:
+            return [self.__class__.__name__, self.text, self.subtext or ""]
+
 
 async def homescreen_dialog(
-    ctx: wire.Context,
+    ctx: wire.GenericContext,
     homepage: RecoveryHomescreen,
     button_label: str,
     info_func: Callable = None,

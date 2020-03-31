@@ -1,10 +1,15 @@
-from trezor import config, utils, wire
+import storage
+import storage.device
+import storage.recovery
+import storage.sd_salt
+from storage import cache
+from trezor import config, io, utils, wire
 from trezor.messages import Capability, MessageType
 from trezor.messages.Features import Features
 from trezor.messages.Success import Success
 from trezor.wire import register
 
-from apps.common import cache, mnemonic, storage
+from apps.common import mnemonic
 
 if False:
     from typing import NoReturn
@@ -18,11 +23,11 @@ if False:
 def get_features() -> Features:
     f = Features()
     f.vendor = "trezor.io"
-    f.language = "english"
+    f.language = "en-US"
     f.major_version = utils.VERSION_MAJOR
     f.minor_version = utils.VERSION_MINOR
     f.patch_version = utils.VERSION_PATCH
-    f.revision = utils.GITREV
+    f.revision = utils.GITREV.encode()
     f.model = utils.MODEL
     f.device_id = storage.device.get_device_id()
     f.label = storage.device.get_label()
@@ -64,6 +69,9 @@ def get_features() -> Features:
             Capability.Shamir,
             Capability.ShamirGroups,
         ]
+    f.sd_card_present = io.SDCard().present()
+    f.sd_protection = storage.sd_salt.is_enabled()
+    f.wipe_code_protection = config.has_wipe_code()
     return f
 
 
@@ -102,10 +110,9 @@ async def handle_Ping(ctx: wire.Context, msg: Ping) -> Success:
     return Success(message=msg.message)
 
 
-def boot(features_only: bool = False) -> None:
+def boot() -> None:
     register(MessageType.Initialize, handle_Initialize)
     register(MessageType.GetFeatures, handle_GetFeatures)
-    if not features_only:
-        register(MessageType.Cancel, handle_Cancel)
-        register(MessageType.ClearSession, handle_ClearSession)
-        register(MessageType.Ping, handle_Ping)
+    register(MessageType.Cancel, handle_Cancel)
+    register(MessageType.ClearSession, handle_ClearSession)
+    register(MessageType.Ping, handle_Ping)
