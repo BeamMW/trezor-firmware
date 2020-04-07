@@ -1,30 +1,15 @@
+#include "os.h"
 #include "definitions.h"
 
 #define IPP_GEN_MAX_Z 1
 #define IPP_GEN_MAX_J 2
 
-// There's not enough space
-#if defined(TARGET_NANOS)
-const uint8_t const_lut_ipp_gen[] = { 0 }
-const uint8_t const_lut_get1_minus[] = { 0 }
-const uint8_t const_ipp_gen_dot[] = { 0 }
+// 23932 bytes TOTAL
 
-secp256k1_gej* get_generator_ipp(size_t i, size_t j, size_t z) {
-    const uint32_t it = IPP_GEN_MAX_J * IPP_GEN_MAX_Z * i + IPP_GEN_MAX_Z * j + z;
-    return &((secp256k1_gej *)const_lut_ipp_gen)[it];
-}
-
-secp256k1_gej* get_generator_get1_minus(void) {
-    return (secp256k1_gej *)const_lut_get1_minus;
-}
-
-secp256k1_gej* get_generator_dot_ipp(void) {
-    return (secp256k1_gej *)const_ipp_gen_dot;
-}
-
-#else
-#ifdef GENERATORS_IPP_NORM
-const uint8_t const_lut_ipp_gen[] = {
+//#define IPP_FLASH
+#ifdef GENERATORS_IPP_FLASH
+// 15872 bytes
+extern const uint8_t N_const_lut_ipp_gen_real[] = {
     0x39, 0xc7, 0x37, 0x00, 0x3c, 0xfe, 0xb0, 0x01, 0x5f, 0x09, 0xb6, 0x02,
     0xde, 0xf4, 0x28, 0x02, 0xd1, 0xe9, 0x65, 0x03, 0x82, 0x20, 0xd7, 0x03,
     0x45, 0xff, 0x44, 0x03, 0xed, 0xe0, 0xe3, 0x01, 0x55, 0x2a, 0x10, 0x01,
@@ -1349,8 +1334,10 @@ const uint8_t const_lut_ipp_gen[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
+#define N_const_lut_ipp_gen (*(volatile uint8_t **)PIC(N_const_lut_ipp_gen_real))
 
-const uint8_t const_lut_get1_minus[] = {
+// 7936 bytes
+extern const uint8_t N_const_lut_get1_minus_real[] = {
     0x72, 0xd7, 0xb6, 0x02, 0x0f, 0x67, 0x1f, 0x00, 0x2a, 0x44, 0x95, 0x00,
     0xfd, 0xe7, 0x41, 0x03, 0x57, 0x4c, 0x95, 0x02, 0x8b, 0x7f, 0xbc, 0x02,
     0x2b, 0x45, 0x04, 0x02, 0xed, 0x2f, 0xca, 0x00, 0x03, 0xbe, 0x4e, 0x01,
@@ -2014,8 +2001,10 @@ const uint8_t const_lut_get1_minus[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
 };
+#define N_const_lut_get1_minus (*(volatile uint8_t **)PIC(N_const_lut_get1_minus_real));
 
-const uint8_t const_ipp_gen_dot[] = {
+// 124 bytes
+extern const uint8_t N_const_ipp_gen_dot_real[] = {
     0x2d, 0xcc, 0x0b, 0x02, 0x04, 0x36, 0x3d, 0x02, 0xfe, 0xfd, 0xac, 0x03,
     0x3d, 0x96, 0xba, 0x00, 0x2e, 0x1a, 0x11, 0x00, 0xb0, 0x53, 0x38, 0x02,
     0xad, 0xe3, 0xbd, 0x00, 0x78, 0xf2, 0x97, 0x01, 0xb0, 0xf9, 0x74, 0x02,
@@ -2028,19 +2017,19 @@ const uint8_t const_ipp_gen_dot[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
 };
+#define N_const_ipp_gen_dot (*(volatile uint8_t **)PIC(N_const_ipp_gen_dot_real))
+
 
 secp256k1_gej* get_generator_ipp(size_t i, size_t j, size_t z) {
     const uint32_t it = IPP_GEN_MAX_J * IPP_GEN_MAX_Z * i + IPP_GEN_MAX_Z * j + z;
-    return &((secp256k1_gej *)const_lut_ipp_gen)[it];
+    return &((secp256k1_gej *)N_const_lut_ipp_gen)[it];
 }
 
 secp256k1_gej* get_generator_get1_minus(void) {
-    return (secp256k1_gej *)const_lut_get1_minus;
+    return (secp256k1_gej *)N_const_lut_get1_minus;
 }
 
 secp256k1_gej* get_generator_dot_ipp(void) {
-    return (secp256k1_gej *)const_ipp_gen_dot;
+    return (secp256k1_gej *)N_const_ipp_gen_dot;
 }
-#endif // GENERATORS_IPP_NORM
-
-#endif // TARGET_NANOS
+#endif // GENERATORS_IPP_FLASH

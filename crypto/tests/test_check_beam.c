@@ -8,12 +8,14 @@
 #include "../beam/rangeproof.h"
 #include "beam_tools/base64.h"
 #include "beam_tools/definitions_test.h"
+#include "../rand.h"
+#include "../beam/sign.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-#include "../beam/lib/secp256k1-zkp/src/field_impl.h"
-#include "../beam/lib/secp256k1-zkp/src/group_impl.h"
-#include "../beam/lib/secp256k1-zkp/src/scalar_impl.h"
+#include "../beam/lib/secp256k1_primitives/field.h"
+#include "../beam/lib/secp256k1_primitives/group.h"
+#include "../beam/lib/secp256k1_primitives/scalar.h"
 #pragma GCC diagnostic pop
 
 #define BEAM_DEBUG 1
@@ -100,130 +102,11 @@ void verify_scalar_data(const char *msg, const char *hex_data,
                     hex_data, "sk");
 }
 
-int test_tx_kernel(void) {
-  uint8_t seed[DIGEST_LENGTH];
-  phrase_to_seed(
-      "edge video genuine moon vibrant hybrid forum climb history iron involve "
-      "sausage",
-      seed);
-  transaction_t transaction;
-  transaction_init(&transaction);
-  HKdf_t kdf;
-  // get_HKdf(0, seed, &kdf);
-  HKdf_init(&kdf);
-  secp256k1_scalar peer_sk;
-  secp256k1_scalar_clear(&peer_sk);
-
-  // Test Add Input
-  peer_add_input(&transaction.inputs, &peer_sk, 100, &kdf, NULL);
-  verify_scalar_data(
-      "Peer sk data: ",
-      "72644062a0703bbe61c5cadc1ec5fdad2b32dfe9684909b0f339ba825fb3f103",
-      &peer_sk);
-  peer_add_input(&transaction.inputs, &peer_sk, 3000, &kdf, NULL);
-  verify_scalar_data(
-      "Peer sk data: ",
-      "c25325ec65ebbfcd5297bfb1f8a37c14d63283085f3703e6afa62cfa9c68bfeb",
-      &peer_sk);
-  peer_add_input(&transaction.inputs, &peer_sk, 2000, &kdf, NULL);
-  verify_scalar_data(
-      "Peer sk data: ",
-      "2ebd4b44494ef4344a7199da37c54ffc24ca31a094ff5b8a33c433403f771dfc",
-      &peer_sk);
-
-  peer_add_output(&transaction.outputs, &peer_sk, 100, &kdf,
-                  NULL);  // REALLY NULL?!
-  verify_scalar_data(
-      "Peer sk data (after out): ",
-      "bc590ae1a8deb875e8abcefe18ff524db4462e9ddbfef215005cd74aaff96e3a",
-      &peer_sk);
-
-  uint8_t *pub_checksum =
-      transaction.outputs.data[0]->public_proof->recovery.checksum;
-  int is_rangeproof_public = !memis0(pub_checksum, 32);
-  DEBUG_PRINT("rangeproof_public was used to create output:",
-              ((uint8_t *)&is_rangeproof_public), sizeof(int));
-  if (is_rangeproof_public) {
-    DEBUG_PRINT("RP pub checksum:", pub_checksum, 32);
-    VERIFY_TEST(IS_EQUAL_HEX(
-        "654a4cac95b6654ee9c99c6a8a32236c8d06c1552c76b83f09c2f055325b2312",
-        pub_checksum, 64));
-  }
-
-  {
-    SHA256_CTX rp_hash;
-    uint8_t rp_digest[SHA256_DIGEST_LENGTH];
-    sha256_Init(&rp_hash);
-    sha256_Update(
-        &rp_hash,
-        (const uint8_t *)transaction.outputs.data[0]->confidential_proof,
-        sizeof(rangeproof_confidential_t));
-    sha256_Final(&rp_hash, rp_digest);
-    DEBUG_PRINT("rangeproof confidential digest", rp_digest,
-                SHA256_DIGEST_LENGTH);
-  }
-
-  uint64_t fee1 = 100;
-  tx_kernel_t kernel;
-  kernel_init(&kernel);
-  kernel.kernel.fee = fee1;
-  secp256k1_gej kG;
-  secp256k1_gej xG;
-  secp256k1_gej_set_infinity(&kG);
-  secp256k1_gej_set_infinity(&xG);
-  secp256k1_scalar peer_nonce;
-  secp256k1_scalar_clear(&peer_nonce);
-  uint8_t kernel_hash_message[DIGEST_LENGTH];
-
-  uint8_t preimage[DIGEST_LENGTH];
-  // random_buffer(preimage, 32);
-  test_set_buffer(preimage, DIGEST_LENGTH, 3);
-
-  uint8_t hash_lock_preimage[DIGEST_LENGTH];
-  SHA256_CTX x;
-  sha256_Init(&x);
-  sha256_Update(&x, preimage, DIGEST_LENGTH);
-  sha256_Final(&x, hash_lock_preimage);
-
-  cosign_kernel_part_1(
-      &kernel, &kG, &xG, &peer_sk, &peer_nonce, 1, &transaction.offset,
-      kernel_hash_message,
-      // TODO: Valdo said we have no hash lock in kernels currently
-      hash_lock_preimage);
-  DEBUG_PRINT("Kernel commitment X:", kernel.kernel.tx_element.commitment.x,
-              DIGEST_LENGTH);
-  DEBUG_PRINT("Kernel commitment Y:",
-              ((uint8_t *)&kernel.kernel.tx_element.commitment.y), 1);
-  VERIFY_TEST(IS_EQUAL_HEX(
-      "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
-      kernel.kernel.tx_element.commitment.x, DIGEST_LENGTH * 2));
-  VERIFY_TEST(kernel.kernel.tx_element.commitment.y == 1);
-  verify_scalar_data(
-      "Transaction offset: ",
-      "bf5c0de4abe1bb78ebaed2011c025550b74931a0df01f518035fda4db2fc713d",
-      &transaction.offset);
-  DEBUG_PRINT("Kernel hash lock message: ", kernel_hash_message, DIGEST_LENGTH);
-  VERIFY_TEST(IS_EQUAL_HEX(
-      "d729163b2cd6e4345f795d0b7341ef30cbd96d9c38bd2e6341f50519af9d7190",
-      kernel_hash_message, DIGEST_LENGTH * 2));
-
-  cosign_kernel_part_2(&kernel, &xG, &peer_sk, &peer_nonce, 1,
-                       kernel_hash_message);
-  verify_scalar_data(
-      "CoSignKernel - pt2. Sig sk: ",
-      "ac0cdbf0769737e7cd3e2c36bf559f948c80236e8fac0fd713df65ca4eec8f67",
-      &kernel.kernel.signature.k);
-
-  transaction_free(&transaction);
-
-  return 0;
-}
-
 void test_key_generation(void) {
   uint8_t seed[DIGEST_LENGTH];
   phrase_to_seed(
-      "edge video genuine moon vibrant hybrid forum climb history iron involve "
-      "sausage",
+      "edge video genuine moon vibrant hybrid forum climb history iron involve sausage",
+      79U,
       seed);
   HKdf_t kdf;
   get_HKdf(0, seed, &kdf);
@@ -391,11 +274,9 @@ void test_inner_product(void) {
 void test_common(void) {
   uint8_t seed[DIGEST_LENGTH];
   phrase_to_seed(
-      "edge video genuine moon vibrant hybrid forum climb history iron involve "
-      "sausage",
+      "edge video genuine moon vibrant hybrid forum climb history iron involve sausage",
+      79U,
       seed);
-  // phrase_to_seed("tomato provide age upon voice fetch nest night parent pilot
-  // evil furnace", seed);
   DEBUG_PRINT("sha256 of pbkdf2 of phrase: ", seed, DIGEST_LENGTH);
   VERIFY_TEST(IS_EQUAL_HEX(
       "751b77ab415ed14573b150b66d779d429e48cd2a40c51bf6ce651ce6c38fd620", seed,
@@ -459,17 +340,25 @@ void test_common(void) {
   VERIFY_TEST(!signature_is_valid(msg, &signature, &pk,
                                   get_context()->generator.G_pts));  // failed
 
-  uint8_t *owner_key =
-      get_owner_key(secret_key, &cofactor, (uint8_t *)"qwerty", 7);
+  uint8_t owner_key[108];
+  get_owner_key(secret_key, &cofactor, (uint8_t *)"qwerty", 7, owner_key);
   char *owner_key_encoded = b64_encode(owner_key, 108);
   printf("owner_key encoded:" ANSI_COLOR_YELLOW " %s\n" ANSI_COLOR_RESET,
          owner_key_encoded);
+#if defined (LEDGER_SDK)
+  // Ledger version has only 2048 iterations and some salt
+  VERIFY_TEST(
+      0 ==
+      strncmp(
+          "3UQNoFSs3QF2GF4MaTMv7jxIlGYnXy7r0mS/S4tTxi0MXQQD7PY2Ji21qyFX4Gdq",
+          owner_key_encoded, 64));
+#else
   VERIFY_TEST(
       0 ==
       strncmp(
           "mJrVrOiyjaMFCjxRsfGahBkiVzC+ymIXDv2qJdJxR4WMBY4rCJ+vTkkcCdVXw41p",
           owner_key_encoded, 64));
-  free(owner_key);
+#endif // LEDGER_SDK
   free(owner_key_encoded);
 }
 
@@ -521,7 +410,7 @@ void test_transaction_signature(void) {
   secp256k1_scalar_clear(&sk_total);
   int64_t value_transferred = 0;
 
-  sign_transaction_part_1(&value_transferred, &sk_total, &inputs, &outputs,
+  sign_transaction_part_1(&value_transferred, &sk_total, inputs.data, inputs.length, outputs.data, outputs.length,
                           &tx_data, &kdf);
 
   secp256k1_scalar res_sk;
@@ -530,7 +419,10 @@ void test_transaction_signature(void) {
   secp256k1_scalar nonce;
   secp256k1_scalar_set_int(&nonce, 3);
 
-  sign_transaction_part_2(&res_sk, &tx_data, &nonce, &sk_total);
+  ecc_signature_t sig;
+  point_import_nnz(&sig.nonce_pub, &tx_data.kernel_nonce);
+
+  sign_transaction_part_2(&res_sk, &tx_data, &nonce, &sk_total, &sig.nonce_pub);
   verify_scalar_data(
       "HW Wallet test. Sign tx scalar: ",
       "007edf32385721084a78f1b8b8d9bc8e377aa2787be38b37e28361fdaf06780c",
@@ -538,7 +430,6 @@ void test_transaction_signature(void) {
 
   vec_deinit(&inputs);
   vec_deinit(&outputs);
-  free_context();
 }
 
 int main(void) {
@@ -549,11 +440,9 @@ int main(void) {
   START_TEST(test_inner_product);
   START_TEST(test_range_proof_public);
   START_TEST(test_range_proof_confidential);
-  START_TEST(test_tx_kernel);
   START_TEST(test_key_generation);
   START_TEST(test_transaction_signature);
 
-  free_context();
   malloc_stats();
 
   return 0;

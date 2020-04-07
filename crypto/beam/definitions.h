@@ -1,13 +1,8 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#define USE_BASIC_CONFIG
-#include "lib/secp256k1-zkp/include/secp256k1.h"
-#include "lib/secp256k1-zkp/src/basic-config.h"
-#include "lib/secp256k1-zkp/src/field.h"
-#include "lib/secp256k1-zkp/src/group.h"
-#include "lib/secp256k1-zkp/src/scalar.h"
-
+#include "lib/secp256k1_primitives/group.h"
+#include "lib/secp256k1_primitives/scalar.h"
 #include "lib/vec.h"
 
 #define DIGEST_LENGTH 32
@@ -41,6 +36,16 @@
 #ifndef UNUSED
 #define UNUSED(x) (void)(x)
 #endif
+
+#if ! defined(LEDGER_SDK)
+#define os_memcpy memcpy
+#define os_memmove memmove
+#define os_memset memset
+#define os_memcmp memcmp
+#else
+// Use Ledger's PRINTF
+#define printf PRINTF
+#endif // LEDGER_SDK
 
 typedef struct {
   uint8_t x[DIGEST_LENGTH];
@@ -119,6 +124,12 @@ typedef struct {
   uint8_t value[8];
 } packed_key_idv_t;
 #pragma pack(pop)
+
+secp256k1_gej *get_generator_lut_G(void);
+
+secp256k1_gej *get_generator_lut_J(void);
+
+secp256k1_gej *get_generator_lut_H(void);
 
 secp256k1_gej *get_generator_G(void);
 

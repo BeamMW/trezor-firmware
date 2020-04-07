@@ -2,9 +2,9 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-#include "../../beam/lib/secp256k1-zkp/src/field_impl.h"
-#include "../../beam/lib/secp256k1-zkp/src/group_impl.h"
-#include "../../beam/lib/secp256k1-zkp/src/scalar_impl.h"
+#include "../../beam/lib/secp256k1_primitives/field.h"
+#include "../../beam/lib/secp256k1_primitives/group.h"
+#include "../../beam/lib/secp256k1_primitives/scalar.h"
 #pragma GCC diagnostic pop
 
 const uint8_t const_pwr_mul[] = {

@@ -4,11 +4,6 @@
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the MIT license. See LICENSE for details.
  */
-
-#ifndef BEAM_DEBUG
-#include "mpconfigport.h"
-#endif
-
 #include "vec.h"
 
 int vec_expand_(char **data, int *length, int *capacity, int memsz) {
