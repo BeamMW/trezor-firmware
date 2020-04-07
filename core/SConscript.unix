@@ -41,6 +41,7 @@ CPPDEFINES_MOD += [
     ('USE_CARDANO', '1' if EVERYTHING else '0'),
     ('USE_NEM', '1' if EVERYTHING else '0'),
     ('USE_EOS', '1' if EVERYTHING else '0'),
+    'TREZOR_CRYPTO_MOD'
 ]
 SOURCE_MOD += [
     'embed/extmod/modtrezorcrypto/modtrezorcrypto.c',
@@ -54,10 +55,10 @@ SOURCE_MOD += [
     'vendor/trezor-crypto/base32.c',
     'vendor/trezor-crypto/beam/definitions_ipp.c',
     'vendor/trezor-crypto/beam/definitions.c',
-    'vendor/trezor-crypto/beam/beam.c',
     'vendor/trezor-crypto/beam/functions.c',
     'vendor/trezor-crypto/beam/internal.c',
     'vendor/trezor-crypto/beam/misc.c',
+    'vendor/trezor-crypto/beam/crypto.c',
     'vendor/trezor-crypto/beam/rangeproof.c',
     'vendor/trezor-crypto/beam/oracle.c',
     'vendor/trezor-crypto/beam/inner_product.c',

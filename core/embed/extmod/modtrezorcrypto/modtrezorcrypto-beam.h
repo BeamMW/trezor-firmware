@@ -7,13 +7,6 @@
 #include "beam/misc.h"
 #include "beam/rangeproof.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#include "field_impl.h"
-#include "group_impl.h"
-#include "scalar_impl.h"
-#pragma GCC diagnostic pop
-
 /// package: trezorcrypto.beam
 
 //
