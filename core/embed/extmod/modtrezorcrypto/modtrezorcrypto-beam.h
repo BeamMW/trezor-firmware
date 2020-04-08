@@ -6,6 +6,8 @@
 #include "beam/kernel.h"
 #include "beam/misc.h"
 #include "beam/rangeproof.h"
+#include "beam/sign.h"
+#include "hw_crypto/coinid.h"
 
 /// package: trezorcrypto.beam
 
@@ -182,7 +184,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(
 
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_1(
     mp_obj_t self, const mp_obj_t seed_bytes, mp_obj_t out_sk_total) {
-  mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(self);
 
   mp_buffer_info_t seed;
   mp_get_buffer_raise(seed_bytes, &seed, MP_BUFFER_READ);
@@ -192,16 +193,18 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_1(
 
   int64_t value_transferred = 0;
 
-  secp256k1_scalar sk_total;
-  init_context();
-  sign_transaction_part_1(&value_transferred, &sk_total, &o->inputs,
-                          &o->outputs, &o->tx_data, &kdf);
-  free_context();
+  //secp256k1_scalar sk_total;
+  //init_context();
+  //mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(self);
+  //sign_transaction_part_1(&value_transferred, &sk_total, &o->inputs,
+  //                        &o->outputs, &o->tx_data, &kdf);
+  //free_context();
 
   mp_buffer_info_t sk_buf;
   mp_get_buffer_raise(out_sk_total, &sk_buf, MP_BUFFER_RW);
 
-  secp256k1_scalar_get_b32((uint8_t*)sk_buf.buf, &sk_total);
+  //secp256k1_scalar_get_b32((uint8_t*)sk_buf.buf, &sk_total);
+  test_message_sign_transaction_send((uint8_t*)sk_buf.buf);
 
   return mp_obj_new_int(value_transferred);
 }
@@ -231,8 +234,8 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_2(
   secp256k1_scalar_clear(&res_sk);
 
   init_context();
-  sign_transaction_part_2(&res_sk, &o->tx_data, &nonce, &sk_total);
-  free_context();
+  //sign_transaction_part_2(&res_sk, &o->tx_data, &nonce, &sk_total);
+  //free_context();
 
   mp_buffer_info_t out_res;
   mp_get_buffer_raise(args[3], &out_res, MP_BUFFER_RW);
@@ -375,7 +378,7 @@ mod_trezorcrypto_beam_from_mnemonic_beam(const mp_obj_t mnemonic) {
   mp_get_buffer_raise(mnemonic, &mnemo, MP_BUFFER_READ);
   uint8_t seed[32];
   const char* pmnemonic = mnemo.len > 0 ? mnemo.buf : "";
-  phrase_to_seed(pmnemonic, seed);
+  phrase_to_seed(pmnemonic, DIGEST_LENGTH, seed);
 
   return mp_obj_new_bytes(seed, sizeof(seed));
 }
@@ -489,7 +492,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_secret_key_to_public_key(
   secp256k1_gej pk;
   generator_mul_scalar(&pk, get_context()->generator.G_pts, &scalar_sk);
   gej_to_xy_bufs(&pk, (uint8_t*)pk_x.buf, (uint8_t*)pk_y.buf);
-  free_context();
+  //free_context();
 
   return mp_const_none;
 }
@@ -529,7 +532,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_signature_sign(size_t n_args,
   gej_to_xy_bufs(&signature.nonce_pub, (uint8_t*)out_nonce_pub_x.buf,
                  (uint8_t*)out_nonce_pub_y.buf);
 
-  free_context();
+  //free_context();
   return mp_const_none;
 }
 
@@ -574,7 +577,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_is_valid_signature(size_t n_args,
   const int is_valid =
       signature_is_valid((const uint8_t*)msg32.buf, &signature, &pk_gej,
                          get_context()->generator.G_pts);
-  free_context();
+  //free_context();
 
   return mp_obj_new_int(is_valid);
 }
@@ -585,37 +588,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
 
 STATIC mp_obj_t mod_trezorcrypto_beam_export_owner_key(size_t n_args,
                                                        const mp_obj_t* args) {
-  mp_buffer_info_t master_key32;
-  mp_get_buffer_raise(args[0], &master_key32, MP_BUFFER_READ);
-
-  mp_buffer_info_t master_cofactor;
-  mp_get_buffer_raise(args[1], &master_cofactor, MP_BUFFER_READ);
-
-  mp_buffer_info_t pin_code;
-  mp_get_buffer_raise(args[2], &pin_code, MP_BUFFER_READ);
-  size_t pin_size = mp_obj_get_int(args[3]);
+  mp_buffer_info_t seed;
+  mp_get_buffer_raise(args[0], &seed, MP_BUFFER_READ);
 
   mp_buffer_info_t out_owner_key;
-  mp_get_buffer_raise(args[4], &out_owner_key, MP_BUFFER_RW);
+  mp_get_buffer_raise(args[1], &out_owner_key, MP_BUFFER_RW);
 
-  secp256k1_scalar cofactor_scalar;
-  scalar_import_nnz(&cofactor_scalar, (const uint8_t*)master_cofactor.buf);
-
-  init_context();
-  uint8_t* owner_key =
-      get_owner_key((const uint8_t*)master_key32.buf, &cofactor_scalar,
-                    (const uint8_t*)pin_code.buf, pin_size);
-  free_context();
-
-  memcpy(out_owner_key.buf, owner_key, 108);
-  free(owner_key);
-  owner_key = NULL;
-
+  get_owner_key((const uint8_t*)seed.buf, (uint8_t*)out_owner_key.buf);
   return mp_const_none;
 }
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
-    mod_trezorcrypto_beam_export_owner_key_obj, 5, 5,
+    mod_trezorcrypto_beam_export_owner_key_obj, 2, 2,
     mod_trezorcrypto_beam_export_owner_key);
 
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_key(size_t n_args,
@@ -649,10 +633,11 @@ STATIC mp_obj_t mod_trezorcrypto_beam_generate_key(size_t n_args,
   mp_buffer_info_t out_image_y;
   mp_get_buffer_raise(args[7], &out_image_y, MP_BUFFER_RW);
 
-  gej_to_xy_bufs(&commitment, (uint8_t*)out_image_x.buf,
-                 (uint8_t*)out_image_y.buf);
+  //gej_to_xy_bufs(&commitment, (uint8_t*)out_image_x.buf,
+  //               (uint8_t*)out_image_y.buf);
 
-  free_context();
+  test_message_sign_transaction_send((uint8_t*)out_image_x.buf);
+  //free_context();
 
   return mp_const_none;
 }
@@ -691,7 +676,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_create_derived_nonce(
   init_context();
   create_derived_nonce((const uint8_t*)master_nonce.buf, idx,
                        (uint8_t*)out_new_nonce.buf);
-  free_context();
+  //free_context();
 
   return mp_const_none;
 }
@@ -718,7 +703,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_get_nonce_public_key(
   get_nonce_public_key((const uint8_t*)nonce.buf, &intermediate_point);
   memcpy(out_nonce_pub_x.buf, intermediate_point.x, 32);
   memcpy(out_nonce_pub_y.buf, &intermediate_point.y, 1);
-  free_context();
+  //free_context();
 
   return mp_const_none;
 }
@@ -739,11 +724,10 @@ STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_key_idv(
   kidv.id.type = type;
   kidv.id.sub_idx = sub_idx;
   kidv.value = value;
+  UNUSED(kidv);
 
   mp_buffer_info_t asset_id;
   mp_get_buffer_raise(args[4], &asset_id, MP_BUFFER_READ);
-
-  const uint8_t is_public = mp_obj_get_int(args[5]);
 
   mp_buffer_info_t seed;
   mp_get_buffer_raise(args[6], &seed, MP_BUFFER_READ);
@@ -754,10 +738,12 @@ STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_key_idv(
   mp_buffer_info_t out_rp;
   mp_get_buffer_raise(args[7], &out_rp, MP_BUFFER_RW);
 
-  init_context();
-  rangeproof_create_from_key_idv(&kdf, (uint8_t*)out_rp.buf, &kidv, NULL,
-                                 is_public);
-  free_context();
+  BeamCrypto_CoinID cid;
+  rangeproof_create_from_cid(&cid, (uint8_t*)out_rp.buf);
+  //init_context();
+  //rangeproof_create_from_key_idv(&kdf, (uint8_t*)out_rp.buf, &kidv, NULL,
+  //                               is_public);
+  //free_context();
 
   return mp_const_none;
 }

@@ -22,6 +22,17 @@ def bin_to_str(binary_data):
     return "".join("{:02x}".format(x) for x in binary_data)
 
 
+def get_beam_seed(mnemonic_phrase=None):
+    if not storage.is_initialized():
+        raise wire.NotInitialized("Device is not initialized")
+
+    if mnemonic_phrase is None:
+        # Get kdf
+        mnemonic_phrase = mnemonic.get_secret()
+    seed = beam.from_mnemonic_beam(mnemonic_phrase)
+    return seed
+
+
 def get_beam_kdf(mnemonic_phrase=None):
     if not storage.is_initialized():
         raise wire.NotInitialized("Device is not initialized")

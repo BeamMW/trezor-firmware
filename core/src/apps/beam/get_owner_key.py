@@ -4,7 +4,7 @@ import ubinascii
 from trezor.crypto import beam
 from trezor.messages.BeamOwnerKey import BeamOwnerKey
 
-from apps.beam.helpers import get_beam_kdf, rand_pswd
+from apps.beam.helpers import get_beam_seed, rand_pswd
 from apps.beam.layout import beam_confirm_message
 
 
@@ -33,10 +33,9 @@ async def get_owner_key(ctx, msg):
 
 def generate_owner_key(passphrase, mnemonic=None):
     owner_key = bytearray(108)
-    master_secret, master_cofactor = get_beam_kdf(mnemonic)
-    beam.export_owner_key(
-        master_secret, master_cofactor, passphrase, len(passphrase), owner_key
-    )
+    seed = get_beam_seed(mnemonic)
+    beam.export_owner_key(seed, owner_key)
+
     owner_key = ubinascii.b2a_base64(owner_key)
 
     return owner_key

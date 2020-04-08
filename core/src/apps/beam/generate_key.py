@@ -3,7 +3,7 @@ import gc
 from trezor.crypto import beam
 from trezor.messages.BeamECCPoint import BeamECCPoint
 
-from apps.common import storage
+import storage
 
 
 async def generate_key(ctx, msg):
