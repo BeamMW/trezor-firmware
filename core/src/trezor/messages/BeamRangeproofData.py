@@ -4,10 +4,10 @@ import protobuf as p
 
 if __debug__:
     try:
-        from typing import Dict, List, Optional
+        from typing import Dict, List  # noqa: F401
         from typing_extensions import Literal  # noqa: F401
     except ImportError:
-        Dict, List, Optional = None, None, None  # type: ignore
+        pass
 
 
 class BeamRangeproofData(p.MessageType):
@@ -15,15 +15,15 @@ class BeamRangeproofData(p.MessageType):
 
     def __init__(
         self,
-        data: bytes = None,
-        is_public: bool = None,
+        data_taux: bytes = None,
+        is_successful: bool = None,
     ) -> None:
-        self.data = data
-        self.is_public = is_public
+        self.data_taux = data_taux
+        self.is_successful = is_successful
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
-            1: ('data', p.BytesType, 0),
-            2: ('is_public', p.BoolType, 0),
+            1: ('data_taux', p.BytesType, 0),
+            2: ('is_successful', p.BoolType, 0),
         }

@@ -116,7 +116,7 @@ class Features(p.MessageType):
             27: ('unfinished_backup', p.BoolType, 0),
             28: ('no_backup', p.BoolType, 0),
             29: ('recovery_mode', p.BoolType, 0),
-            30: ('capabilities', p.EnumType("Capability", (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)), p.FLAG_REPEATED),
+            30: ('capabilities', p.EnumType("Capability", (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 15, 16)), p.FLAG_REPEATED),
             31: ('backup_type', p.EnumType("BackupType", (0, 1, 2)), 0),
             32: ('sd_card_present', p.BoolType, 0),
             33: ('sd_protection', p.BoolType, 0),

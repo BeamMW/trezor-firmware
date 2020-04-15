@@ -21,6 +21,6 @@ if not utils.BITCOIN_ONLY:
     Stellar = 12  # type: Literal[12]
     Tezos = 13  # type: Literal[13]
     U2F = 14  # type: Literal[14]
-    Beam = 17
+    Beam = 17  # type: Literal[17]
 Shamir = 15  # type: Literal[15]
 ShamirGroups = 16  # type: Literal[16]

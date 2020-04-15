@@ -712,6 +712,48 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_get_nonce_public_key_obj, 3, 3,
     mod_trezorcrypto_beam_get_nonce_public_key);
 
+STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_cid(
+    size_t n_args, const mp_obj_t* args) {
+  mp_buffer_info_t seed;
+  mp_get_buffer_raise(args[0], &seed, MP_BUFFER_READ);
+
+  const uint64_t idx = mp_obj_get_uint64_beam(args[1]);
+  const uint32_t type = mp_obj_get_int(args[2]);
+  const uint32_t sub_idx = mp_obj_get_int(args[3]);
+  const uint64_t amount = mp_obj_get_uint64_beam(args[4]);
+  const uint32_t asset_id = mp_obj_get_int(args[5]);
+
+  BeamCrypto_CoinID cid;
+  cid.m_Idx = idx;
+  cid.m_Type = type;
+  cid.m_SubIdx = sub_idx;
+  cid.m_Amount = amount;
+  cid.m_AssetID = asset_id;
+
+  mp_buffer_info_t pt0_x;
+  mp_get_buffer_raise(args[6], &pt0_x, MP_BUFFER_READ);
+  const uint8_t pt0_y = mp_obj_get_int(args[7]);
+
+  mp_buffer_info_t pt1_x;
+  mp_get_buffer_raise(args[8], &pt1_x, MP_BUFFER_READ);
+  const uint8_t pt1_y = mp_obj_get_int(args[9]);
+
+  mp_buffer_info_t out_rp;
+  mp_get_buffer_raise(args[10], &out_rp, MP_BUFFER_RW);
+
+  const int is_successful = rangeproof_create_from_cid((const uint8_t*)seed.buf,
+                                                       &cid,
+                                                       (const uint8_t*)pt0_x.buf, pt0_y,
+                                                       (const uint8_t*)pt1_x.buf, pt1_y,
+                                                       (uint8_t*)out_rp.buf);
+
+  return mp_obj_new_int(is_successful);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_generate_rp_from_cid_obj, 11, 11,
+    mod_trezorcrypto_beam_generate_rp_from_cid);
+
+//DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_key_idv(
     size_t n_args, const mp_obj_t* args) {
   uint64_t idx = mp_obj_get_uint64_beam(args[0]);
@@ -739,7 +781,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_key_idv(
   mp_get_buffer_raise(args[7], &out_rp, MP_BUFFER_RW);
 
   BeamCrypto_CoinID cid;
-  rangeproof_create_from_cid(&cid, (uint8_t*)out_rp.buf);
+  test_rangeproof_create_from_cid(&cid, (uint8_t*)out_rp.buf);
   //init_context();
   //rangeproof_create_from_key_idv(&kdf, (uint8_t*)out_rp.buf, &kidv, NULL,
   //                               is_public);
@@ -828,12 +870,16 @@ STATIC const mp_rom_map_elem_t mod_trezorcrypto_beam_globals_table[] = {
      MP_ROM_PTR(&mod_trezorcrypto_beam_create_derived_nonce_obj)},
     {MP_ROM_QSTR(MP_QSTR_get_nonce_public_key),
      MP_ROM_PTR(&mod_trezorcrypto_beam_get_nonce_public_key_obj)},
+    //DEPRECATED
     {MP_ROM_QSTR(MP_QSTR_generate_rp_from_key_idv),
      MP_ROM_PTR(&mod_trezorcrypto_beam_generate_rp_from_key_idv_obj)},
     {MP_ROM_QSTR(MP_QSTR_KeyIDV),
      MP_ROM_PTR(&mod_trezorcrypto_beam_key_idv_type)},
     {MP_ROM_QSTR(MP_QSTR_TransactionMaker),
      MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_maker_type)},
+    // NEW CRYPTO
+    {MP_ROM_QSTR(MP_QSTR_generate_rp_from_cid),
+     MP_ROM_PTR(&mod_trezorcrypto_beam_generate_rp_from_cid_obj)},
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_trezorcrypto_beam_globals,

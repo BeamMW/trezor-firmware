@@ -2,14 +2,15 @@
 # fmt: off
 import protobuf as p
 
-from .BeamKeyIDV import BeamKeyIDV
+from .BeamCoinID import BeamCoinID
+from .BeamECCPoint import BeamECCPoint
 
 if __debug__:
     try:
-        from typing import Dict, List, Optional
+        from typing import Dict, List  # noqa: F401
         from typing_extensions import Literal  # noqa: F401
     except ImportError:
-        Dict, List, Optional = None, None, None  # type: ignore
+        pass
 
 
 class BeamGenerateRangeproof(p.MessageType):
@@ -17,15 +18,18 @@ class BeamGenerateRangeproof(p.MessageType):
 
     def __init__(
         self,
-        kidv: BeamKeyIDV = None,
-        is_public: bool = None,
+        cid: BeamCoinID = None,
+        pt0: BeamECCPoint = None,
+        pt1: BeamECCPoint = None,
     ) -> None:
-        self.kidv = kidv
-        self.is_public = is_public
+        self.cid = cid
+        self.pt0 = pt0
+        self.pt1 = pt1
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
-            1: ('kidv', BeamKeyIDV, 0),
-            2: ('is_public', p.BoolType, 0),
+            1: ('cid', BeamCoinID, 0),
+            2: ('pt0', BeamECCPoint, 0),
+            3: ('pt1', BeamECCPoint, 0),
         }

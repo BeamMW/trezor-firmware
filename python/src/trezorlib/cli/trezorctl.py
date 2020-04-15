@@ -63,6 +63,7 @@ COMMAND_ALIASES = {
     "decrypt-keyvalue": crypto.decrypt_keyvalue,
     # currency name aliases:
     "bnb": binance.cli,
+    "beam": beam.cli,
     "eth": ethereum.cli,
     "ada": cardano.cli,
     "lsk": lisk.cli,
@@ -256,6 +257,7 @@ def usb_reset():
 #
 
 cli.add_command(binance.cli)
+cli.add_command(beam.cli)
 cli.add_command(btc.cli)
 cli.add_command(cardano.cli)
 cli.add_command(cosi.cli)
@@ -271,7 +273,6 @@ cli.add_command(ripple.cli)
 cli.add_command(settings.cli)
 cli.add_command(stellar.cli)
 cli.add_command(tezos.cli)
-cli.add_command(beam.cli)
 
 cli.add_command(firmware.firmware_update)
 

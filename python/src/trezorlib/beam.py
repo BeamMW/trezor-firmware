@@ -116,15 +116,19 @@ def get_nonce_image(client, slot):
 
 @expect(messages.BeamRangeproofData)
 def generate_rangeproof(
-    client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_public
+    client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
 ):
-    kidv = messages.BeamKeyIDV(
-        idx=int(kidv_idx),
-        type=int(kidv_type),
-        sub_idx=int(kidv_sub_idx),
-        value=int(kidv_value),
+    cid = messages.BeamCoinID(
+        idx=int(cid_idx),
+        type=int(cid_type),
+        sub_idx=int(cid_sub_idx),
+        amount=int(cid_amount),
+        asset_id=int(cid_asset_id),
     )
-    return client.call(messages.BeamGenerateRangeproof(kidv=kidv, is_public=is_public))
+    pt0 = messages.BeamECCPoint(x=bytearray.fromhex(pt0_x), y=int(pt0_y))
+    pt1 = messages.BeamECCPoint(x=bytearray.fromhex(pt1_x), y=int(pt1_y))
+
+    return client.call(messages.BeamGenerateRangeproof(cid=cid, pt0=pt0, pt1=pt1))
 
 
 @session

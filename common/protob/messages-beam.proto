@@ -6,6 +6,7 @@ option java_package = "com.satoshilabs.trezor.lib.protobuf";
 option java_outer_classname = "TrezorMessageBeam";
 
 /**
+ * //DEPRECATED
  * Structure representing beam KIDV (Key ID, Value) structure
  * @embed
  */
@@ -15,6 +16,18 @@ message BeamKeyIDV {
     optional uint32 sub_idx = 3;
 
     optional uint64 value = 4;
+}
+
+/**
+ * Structure representing beam CoinID (id, type, subIdx, amount, assetID) structure
+ * @embed
+ */
+message BeamCoinID {
+    optional uint64 idx = 1;
+    optional uint32 type = 2;
+    optional uint32 sub_idx = 3;
+    optional uint64 amount = 4;
+    optional uint32 asset_id = 5;
 }
 
 /**
@@ -128,8 +141,9 @@ message BeamOwnerKey {
  * @next Failure
  */
 message BeamGenerateRangeproof {
-    optional BeamKeyIDV kidv = 1;  // KIDV to generate key from
-    optional bool is_public = 2; // displays whether it's public or confidential rangeproof
+    optional BeamCoinID cid = 1;  // CoinID to generate key from
+    optional BeamECCPoint pt0 = 2; // point0 for rangeproof
+    optional BeamECCPoint pt1 = 3; // point1 for rangeproof
 }
 
 /**
@@ -137,8 +151,8 @@ message BeamGenerateRangeproof {
  * @end
  */
 message BeamRangeproofData {
-    optional bytes data = 1; // rangeproof data
-    optional bool is_public = 2; // displays whether it's public or confidential rangeproof
+    optional bytes data_taux = 1; // rangeproof data (TauX)
+    optional bool is_successful = 2; // is rangeproof calculate process was successful
 }
 
 /**

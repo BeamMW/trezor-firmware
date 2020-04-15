@@ -5,6 +5,7 @@ from .Address import Address
 from .ApplyFlags import ApplyFlags
 from .ApplySettings import ApplySettings
 from .BackupDevice import BackupDevice
+from .BeamCoinID import BeamCoinID
 from .BeamECCPoint import BeamECCPoint
 from .BeamGenerateKey import BeamGenerateKey
 from .BeamGenerateNonce import BeamGenerateNonce

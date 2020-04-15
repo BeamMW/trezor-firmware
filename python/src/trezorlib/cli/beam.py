@@ -22,7 +22,7 @@ import requests
 from .. import beam, tools
 
 # TODO:
-PATH_HELP = "BIP-32 path, e.g. m/44'/134'/0'/0'"
+PATH_HELP = "BIP-32 path, e.g. m/44'/1533'/0'/0'"
 
 @click.group(name="beam")
 def cli():
@@ -46,7 +46,7 @@ def beam_get_public_key(connect, kid_idx, kid_sub_idx, show_display):
 @cli.command(help="Get Beam owner key.")
 @click.option("-d", "--show-display", is_flag=True)
 @click.pass_obj
-def beam_get_owner_key(connect, show_display):
+def get_owner_key(connect, show_display):
     client = connect()
     res = beam.get_owner_key(client, show_display)
     print("Ok")
@@ -135,20 +135,24 @@ def beam_get_nonce_image(connect, slot):
 
 
 @cli.command(
-    help="Generate and get a rangeproof (public or confidential) for the given kidv and nonce slot"
+    help="Generate and get a rangeproof for the given CoinID"
 )
-@click.argument("kidv_idx")
-@click.argument("kidv_type")
-@click.argument("kidv_sub_idx")
-@click.argument("kidv_value")
-@click.option("--is-public", is_flag=True)
+@click.argument("cid_idx")
+@click.argument("cid_type")
+@click.argument("cid_sub_idx")
+@click.argument("cid_amount")
+@click.argument("cid_asset_id")
+@click.argument("pt0_x")
+@click.argument("pt0_y")
+@click.argument("pt1_x")
+@click.argument("pt1_y")
 @click.pass_obj
-def beam_generate_rangeproof(
-    connect, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_public
+def generate_rangeproof(
+    connect, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
 ):
     client = connect()
     return beam.generate_rangeproof(
-        client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_public
+        client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
     )
 
 
