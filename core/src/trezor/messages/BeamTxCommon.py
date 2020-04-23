@@ -2,8 +2,8 @@
 # fmt: off
 import protobuf as p
 
-from .BeamKernelParametersOld import BeamKernelParametersOld
-from .BeamKeyIDV import BeamKeyIDV
+from .BeamCoinID import BeamCoinID
+from .BeamKernelParameters import BeamKernelParameters
 
 if __debug__:
     try:
@@ -13,29 +13,25 @@ if __debug__:
         pass
 
 
-class BeamSignTransaction(p.MessageType):
-    MESSAGE_WIRE_TYPE = 914
+class BeamTxCommon(p.MessageType):
 
     def __init__(
         self,
-        inputs: List[BeamKeyIDV] = None,
+        inputs: List[BeamCoinID] = None,
         offset_sk: bytes = None,
-        outputs: List[BeamKeyIDV] = None,
-        nonce_slot: int = None,
-        kernel_params: BeamKernelParametersOld = None,
+        outputs: List[BeamCoinID] = None,
+        kernel_params: BeamKernelParameters = None,
     ) -> None:
         self.inputs = inputs if inputs is not None else []
         self.offset_sk = offset_sk
         self.outputs = outputs if outputs is not None else []
-        self.nonce_slot = nonce_slot
         self.kernel_params = kernel_params
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
-            1: ('inputs', BeamKeyIDV, p.FLAG_REPEATED),
+            1: ('inputs', BeamCoinID, p.FLAG_REPEATED),
             2: ('offset_sk', p.BytesType, 0),
-            3: ('outputs', BeamKeyIDV, p.FLAG_REPEATED),
-            4: ('nonce_slot', p.UVarintType, 0),
-            5: ('kernel_params', BeamKernelParametersOld, 0),
+            3: ('outputs', BeamCoinID, p.FLAG_REPEATED),
+            4: ('kernel_params', BeamKernelParameters, 0),
         }

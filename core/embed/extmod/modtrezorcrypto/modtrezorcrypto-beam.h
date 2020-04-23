@@ -7,7 +7,7 @@
 #include "beam/misc.h"
 #include "beam/rangeproof.h"
 #include "beam/sign.h"
-#include "hw_crypto/coinid.h"
+#include "hw_crypto/keykeeper.h"
 
 /// package: trezorcrypto.beam
 
@@ -62,20 +62,321 @@ static uint64_t mp_obj_get_uint64_beam(mp_const_obj_t arg) {
   }
 }
 
+//
+// New Transaction Manager
+//
+typedef struct _mp_obj_coin_id_t {
+  mp_obj_base_t base;
+  BeamCrypto_CoinID cid;
+} mp_obj_coin_id_t;
+STATIC const mp_obj_type_t mod_trezorcrypto_beam_coin_id_type;
+
+typedef struct _mp_obj_beam_transaction_manager_t {
+  mp_obj_base_t base;
+  // Add CoinIDs to these vecs first, then set appropriate data in TxCommon part
+  cid_vec_t inputs;
+  cid_vec_t outputs;
+
+  BeamCrypto_KeyKeeper key_keeper;
+
+  BeamCrypto_TxCommon tx_common;
+  BeamCrypto_TxMutualInfo tx_mutual_info;
+  BeamCrypto_TxSenderParams tx_sender_params;
+} mp_obj_beam_transaction_manager_t;
+STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_manager_type;
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_make_new(
+    const mp_obj_type_t* type, size_t n_args, size_t n_kw,
+    const mp_obj_t* args) {
+  mp_arg_check_num(n_args, n_kw, 0, 0, false);
+  mp_obj_beam_transaction_manager_t* o =
+      m_new_obj(mp_obj_beam_transaction_manager_t);
+  o->base.type = type;
+
+  vec_init(&o->inputs);
+  vec_init(&o->outputs);
+
+  // Set invalid nonce slot at initialization, so transaction sign won't occur
+  o->tx_sender_params.m_iSlot = MASTER_NONCE_SLOT;
+
+  return MP_OBJ_FROM_PTR(o);
+}
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager___del__(mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  // TODO: if we add support for nested kernels, we should also deinit all
+  // nested inputs/outputs list of these kernels
+  // @see beam/misc.c in `transaction_free()` method
+  // vec_deinit_inner_ptrs(&o->inputs, tx_input_t);
+  // transaction_free_outputs(&o->outputs);
+
+  vec_deinit(&o->inputs);
+  vec_deinit(&o->outputs);
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager___del___obj,
+    mod_trezorcrypto_beam_transaction_manager___del__);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_add_input(
+    mp_obj_t self, const mp_obj_t cid_input) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+  mp_obj_coin_id_t* input_obj = MP_OBJ_TO_PTR(cid_input);
+  BeamCrypto_CoinID cid;
+  memcpy(&cid, &input_obj->cid, sizeof(BeamCrypto_CoinID));
+
+  vec_push(&o->inputs, cid);
+
+  // Move data and its length to TxCommon part
+  o->tx_common.m_pIns = o->inputs.data;
+  o->tx_common.m_Ins = o->inputs.length;
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(
+    mod_trezorcrypto_beam_transaction_manager_add_input_obj,
+    mod_trezorcrypto_beam_transaction_manager_add_input);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_add_output(
+    mp_obj_t self, const mp_obj_t cid_output) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+  mp_obj_coin_id_t* output_obj = MP_OBJ_TO_PTR(cid_output);
+  BeamCrypto_CoinID cid;
+  memcpy(&cid, &output_obj->cid, sizeof(BeamCrypto_CoinID));
+
+  vec_push(&o->outputs, cid);
+
+  // Move data and its length to TxCommon part
+  o->tx_common.m_pOuts = o->outputs.data;
+  o->tx_common.m_Outs = o->outputs.length;
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(
+    mod_trezorcrypto_beam_transaction_manager_add_output_obj,
+    mod_trezorcrypto_beam_transaction_manager_add_output);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_init_keykeeper(
+    mp_obj_t self, const mp_obj_t seed_arg) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  mp_buffer_info_t seed;
+  mp_get_buffer_raise(seed_arg, &seed, MP_BUFFER_READ);
+
+  BeamCrypto_UintBig seed_beam;
+  memcpy(seed_beam.m_pVal, (const uint8_t*)seed.buf, DIGEST_LENGTH);
+
+  BeamCrypto_Kdf_Init(&o->key_keeper.m_MasterKey, &seed_beam);
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(
+    mod_trezorcrypto_beam_transaction_manager_init_keykeeper_obj,
+    mod_trezorcrypto_beam_transaction_manager_init_keykeeper);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_set_common_info(
+    size_t n_args, const mp_obj_t* args) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(args[0]);
+  // Attention! Inputs and outputs should be added beforehand using add_input(), add_output() methods
+
+  // Get Kernel
+  {
+    const uint64_t fee = mp_obj_get_uint64_beam(args[1]);
+    const uint64_t min_height = mp_obj_get_uint64_beam(args[2]);
+    const uint64_t max_height = mp_obj_get_uint64_beam(args[3]);
+
+    o->tx_common.m_Krn.m_Fee = fee;
+    o->tx_common.m_Krn.m_hMin = min_height;
+    o->tx_common.m_Krn.m_hMax = max_height;
+
+    mp_buffer_info_t peer_commitment_x;
+    mp_get_buffer_raise(args[4], &peer_commitment_x, MP_BUFFER_READ);
+    const uint8_t peer_commitment_y = mp_obj_get_int(args[5]);
+    memcpy(&o->tx_common.m_Krn.m_Commitment.m_X, (const uint8_t*)peer_commitment_x.buf,
+           DIGEST_LENGTH);
+    o->tx_common.m_Krn.m_Commitment.m_Y = peer_commitment_y;
+
+    // Get signature
+    {
+      // Get nonce_pub
+      // x part
+      mp_buffer_info_t nonce_pub_x;
+      mp_get_buffer_raise(args[6], &nonce_pub_x, MP_BUFFER_READ);
+      // y part
+      const uint8_t nonce_pub_y = mp_obj_get_int(args[7]);
+      // Convert nonce pub from two parts to CompactPoint
+      memcpy(o->tx_common.m_Krn.m_Signature.m_NoncePub.m_X.m_pVal, (const uint8_t*)nonce_pub_x.buf, DIGEST_LENGTH);
+      o->tx_common.m_Krn.m_Signature.m_NoncePub.m_Y = nonce_pub_y;
+
+      // Get scalar K
+      mp_buffer_info_t signature_scalar_k;
+      mp_get_buffer_raise(args[8], &signature_scalar_k, MP_BUFFER_READ);
+      memcpy(o->tx_common.m_Krn.m_Signature.m_k.m_pVal, (const uint8_t*)signature_scalar_k.buf, DIGEST_LENGTH);
+    }
+  }
+
+  mp_buffer_info_t offset;
+  mp_get_buffer_raise(args[9], &offset, MP_BUFFER_READ);
+  memcpy(o->tx_common.m_kOffset.m_pVal, (const uint8_t*)offset.buf, DIGEST_LENGTH);
+
+  // Parameters accepted
+  return mp_obj_new_int(1);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_transaction_manager_set_common_info_obj, 10, 10,
+    mod_trezorcrypto_beam_transaction_manager_set_common_info);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_set_mutual_info(
+    size_t n_args, const mp_obj_t* args) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(args[0]);
+
+  mp_buffer_info_t peer_id;
+  mp_get_buffer_raise(args[1], &peer_id, MP_BUFFER_READ);
+  memcpy(o->tx_mutual_info.m_Peer.m_pVal, (const uint8_t*)peer_id.buf, DIGEST_LENGTH);
+
+  o->tx_mutual_info.m_MyIDKey = mp_obj_get_uint64_beam(args[2]);
+
+  // Get PaymentProofSignature
+  {
+    // Get nonce_pub
+    // x part
+    mp_buffer_info_t nonce_pub_x;
+    mp_get_buffer_raise(args[3], &nonce_pub_x, MP_BUFFER_READ);
+    // y part
+    const uint8_t nonce_pub_y = mp_obj_get_int(args[4]);
+    // Convert nonce pub from two parts to CompactPoint
+    memcpy(o->tx_mutual_info.m_PaymentProofSignature.m_NoncePub.m_X.m_pVal, (const uint8_t*)nonce_pub_x.buf, DIGEST_LENGTH);
+    o->tx_mutual_info.m_PaymentProofSignature.m_NoncePub.m_Y = nonce_pub_y;
+
+    // Get scalar K
+    mp_buffer_info_t signature_scalar_k;
+    mp_get_buffer_raise(args[5], &signature_scalar_k, MP_BUFFER_READ);
+    memcpy(o->tx_mutual_info.m_PaymentProofSignature.m_k.m_pVal, (const uint8_t*)signature_scalar_k.buf, DIGEST_LENGTH);
+  }
+
+  // Parameters accepted
+  return mp_obj_new_int(1);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_transaction_manager_set_mutual_info_obj, 6, 6,
+    mod_trezorcrypto_beam_transaction_manager_set_mutual_info);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_set_sender_params(
+    size_t n_args, const mp_obj_t* args) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(args[0]);
+
+  const uint32_t nonce_slot = mp_obj_get_int(args[1]);
+  if (!is_valid_nonce_slot(nonce_slot)) return mp_obj_new_int(0);
+
+  o->tx_sender_params.m_iSlot = nonce_slot;
+
+  mp_buffer_info_t user_agreement;
+  mp_get_buffer_raise(args[2], &user_agreement, MP_BUFFER_READ);
+
+  memcpy(o->tx_sender_params.m_UserAgreement.m_pVal, (const uint8_t*)user_agreement.buf, DIGEST_LENGTH);
+
+  // Parameters accepted
+  return mp_obj_new_int(1);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_transaction_manager_set_sender_params_obj, 3, 3,
+    mod_trezorcrypto_beam_transaction_manager_set_sender_params);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send(
+    mp_obj_t self, const mp_obj_t send_phase_arg) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const uint32_t send_phase = mp_obj_get_int(send_phase_arg);
+  // TODO
+  UNUSED(send_phase);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Send(&o->key_keeper,
+                                                   &o->tx_common, &o->tx_mutual_info, &o->tx_sender_params);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Receive(&o->key_keeper, &o->tx_common, &o->tx_mutual_info);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_split(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Split(&o->key_keeper, &o->tx_common);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_coin_id_make_new(
+    const mp_obj_type_t* type, size_t n_args, size_t n_kw, const mp_obj_t* args) {
+  mp_arg_check_num(n_args, n_kw, 0, 0, false);
+  mp_obj_coin_id_t* o = m_new_obj(mp_obj_coin_id_t);
+  o->base.type = type;
+
+  coin_id_init(&o->cid);
+
+  return MP_OBJ_FROM_PTR(o);
+}
+
+STATIC mp_obj_t mod_trezorcrypto_beam_coin_id_set(size_t n_args, const mp_obj_t* args) {
+  mp_obj_coin_id_t* o = MP_OBJ_TO_PTR(args[0]);
+
+  const uint64_t idx = mp_obj_get_uint64_beam(args[1]);
+  const uint32_t type = mp_obj_get_int(args[2]);
+  const uint32_t sub_idx = mp_obj_get_int(args[3]);
+  const uint64_t amount = mp_obj_get_uint64_beam(args[4]);
+  const uint32_t asset_id = mp_obj_get_int(args[5]);
+
+  o->cid.m_Idx = idx;
+  o->cid.m_Type = type;
+  o->cid.m_SubIdx = sub_idx;
+  o->cid.m_Amount = amount;
+  o->cid.m_AssetID = asset_id;
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_coin_id_set_obj, 6, 6,
+    mod_trezorcrypto_beam_coin_id_set);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_coin_id___del__(mp_obj_t self) {
+  mp_obj_coin_id_t* o = MP_OBJ_TO_PTR(self);
+  memzero(&(o->cid), sizeof(BeamCrypto_CoinID));
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_trezorcrypto_beam_coin_id___del___obj,
+                                 mod_trezorcrypto_beam_coin_id___del__);
+
+
+// DEPRECATED
 typedef struct _mp_obj_key_idv_t {
   mp_obj_base_t base;
   key_idv_t kidv;
 } mp_obj_key_idv_t;
-
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_key_idv_type;
 
+// DEPRECATED
 typedef struct _mp_obj_beam_transaction_maker_t {
   mp_obj_base_t base;
   kidv_vec_t inputs;
   kidv_vec_t outputs;
   transaction_data_t tx_data;
 } mp_obj_beam_transaction_maker_t;
-
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_maker_type;
 
 //
@@ -117,6 +418,7 @@ STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_maker_type;
 ///         '''
 ///         Sets fields for transaction data
 ///         '''
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_make_new(
     const mp_obj_type_t* type, size_t n_args, size_t n_kw,
     const mp_obj_t* args) {
@@ -134,6 +436,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_make_new(
   return MP_OBJ_FROM_PTR(o);
 }
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker___del__(mp_obj_t self) {
   mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(self);
 
@@ -152,6 +455,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(
     mod_trezorcrypto_beam_transaction_maker___del___obj,
     mod_trezorcrypto_beam_transaction_maker___del__);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_add_input(
     mp_obj_t self, mp_obj_t kidv_input) {
   mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(self);
@@ -167,6 +471,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(
     mod_trezorcrypto_beam_transaction_maker_add_input_obj,
     mod_trezorcrypto_beam_transaction_maker_add_input);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_add_output(
     mp_obj_t self, const mp_obj_t kidv_output) {
   mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(self);
@@ -182,6 +487,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(
     mod_trezorcrypto_beam_transaction_maker_add_output_obj,
     mod_trezorcrypto_beam_transaction_maker_add_output);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_1(
     mp_obj_t self, const mp_obj_t seed_bytes, mp_obj_t out_sk_total) {
 
@@ -212,6 +518,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(
     mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_1_obj,
     mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_1);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_2(
     size_t n_args, const mp_obj_t* args) {
   mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(args[0]);
@@ -248,6 +555,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_2_obj, 4, 4,
     mod_trezorcrypto_beam_transaction_maker_sign_transaction_part_2);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_set_transaction_data(
     size_t n_args, const mp_obj_t* args) {
   mp_obj_beam_transaction_maker_t* o = MP_OBJ_TO_PTR(args[0]);
@@ -291,6 +599,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_transaction_maker_set_transaction_data_obj, 10, 10,
     mod_trezorcrypto_beam_transaction_maker_set_transaction_data);
 
+// DEPRECATED
 /// class KeyIDV:
 ///     '''
 ///     Beam KeyIDV
@@ -305,6 +614,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
 ///         '''
 ///         Sets index, type, sub index and value of KIDV object.
 ///         '''
+// DEPRECATED
 STATIC mp_obj_t
 mod_trezorcrypto_beam_key_idv_make_new(const mp_obj_type_t* type, size_t n_args,
                                        size_t n_kw, const mp_obj_t* args) {
@@ -317,6 +627,7 @@ mod_trezorcrypto_beam_key_idv_make_new(const mp_obj_type_t* type, size_t n_args,
   return MP_OBJ_FROM_PTR(o);
 }
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_key_idv_set(size_t n_args,
                                                   const mp_obj_t* args) {
   mp_obj_key_idv_t* o = MP_OBJ_TO_PTR(args[0]);
@@ -342,6 +653,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_key_idv_set_obj, 5, 5,
     mod_trezorcrypto_beam_key_idv_set);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_key_idv___del__(mp_obj_t self) {
   mp_obj_key_idv_t* o = MP_OBJ_TO_PTR(self);
   memzero(&(o->kidv), sizeof(key_idv_t));
@@ -753,7 +1065,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_generate_rp_from_cid_obj, 11, 11,
     mod_trezorcrypto_beam_generate_rp_from_cid);
 
-//DEPRECATED
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_key_idv(
     size_t n_args, const mp_obj_t* args) {
   uint64_t idx = mp_obj_get_uint64_beam(args[0]);
@@ -794,10 +1106,67 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_generate_rp_from_key_idv_obj, 8, 8,
     mod_trezorcrypto_beam_generate_rp_from_key_idv);
 
+
 //
 // Type defs
 //
 
+// CoinID vtable
+STATIC const mp_rom_map_elem_t
+    mod_trezorcrypto_beam_coin_id_locals_dict_table[] = {
+        {MP_ROM_QSTR(MP_QSTR___del__),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_coin_id___del___obj)},
+        {MP_ROM_QSTR(MP_QSTR_set),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_coin_id_set_obj)},
+};
+STATIC MP_DEFINE_CONST_DICT(mod_trezorcrypto_beam_coin_id_locals_dict,
+                            mod_trezorcrypto_beam_coin_id_locals_dict_table);
+
+// CoinID type
+STATIC const mp_obj_type_t mod_trezorcrypto_beam_coin_id_type = {
+    {&mp_type_type},
+    .name = MP_QSTR_CoinID,
+    .make_new = mod_trezorcrypto_beam_coin_id_make_new,
+    .locals_dict = (void*)&mod_trezorcrypto_beam_coin_id_locals_dict,
+};
+
+// TransactionManager vtable
+STATIC const mp_rom_map_elem_t
+    mod_trezorcrypto_beam_transaction_manager_locals_dict_table[] = {
+        {MP_ROM_QSTR(MP_QSTR___del__),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager___del___obj)},
+        {MP_ROM_QSTR(MP_QSTR_add_input),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_add_input_obj)},
+        {MP_ROM_QSTR(MP_QSTR_add_output),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_add_output_obj)},
+        {MP_ROM_QSTR(MP_QSTR_init_keykeeper),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_init_keykeeper_obj)},
+        {MP_ROM_QSTR(MP_QSTR_set_common_info),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_set_common_info_obj)},
+        {MP_ROM_QSTR(MP_QSTR_set_mutual_info),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_set_mutual_info_obj)},
+        {MP_ROM_QSTR(MP_QSTR_set_sender_params),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_set_sender_params_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_receive),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_split),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_obj)},
+};
+STATIC MP_DEFINE_CONST_DICT(
+    mod_trezorcrypto_beam_transaction_manager_locals_dict,
+    mod_trezorcrypto_beam_transaction_manager_locals_dict_table);
+
+// TransactionManager type
+STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_manager_type = {
+    {&mp_type_type},
+    .name = MP_QSTR_TransactionManager,
+    .make_new = mod_trezorcrypto_beam_transaction_manager_make_new,
+    .locals_dict = (void*)&mod_trezorcrypto_beam_transaction_manager_locals_dict,
+};
+
+// DEPRECATED
 STATIC const mp_rom_map_elem_t
     mod_trezorcrypto_beam_key_idv_locals_dict_table[] = {
         {MP_ROM_QSTR(MP_QSTR___del__),
@@ -808,6 +1177,7 @@ STATIC const mp_rom_map_elem_t
 STATIC MP_DEFINE_CONST_DICT(mod_trezorcrypto_beam_key_idv_locals_dict,
                             mod_trezorcrypto_beam_key_idv_locals_dict_table);
 
+// DEPRECATED
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_key_idv_type = {
     {&mp_type_type},
     .name = MP_QSTR_KeyIDV,
@@ -815,6 +1185,7 @@ STATIC const mp_obj_type_t mod_trezorcrypto_beam_key_idv_type = {
     .locals_dict = (void*)&mod_trezorcrypto_beam_key_idv_locals_dict,
 };
 
+// DEPRECATED
 STATIC const mp_rom_map_elem_t
     mod_trezorcrypto_beam_transaction_maker_locals_dict_table[] = {
         {MP_ROM_QSTR(MP_QSTR___del__),
@@ -837,6 +1208,7 @@ STATIC MP_DEFINE_CONST_DICT(
     mod_trezorcrypto_beam_transaction_maker_locals_dict,
     mod_trezorcrypto_beam_transaction_maker_locals_dict_table);
 
+// DEPRECATED
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_maker_type = {
     {&mp_type_type},
     .name = MP_QSTR_TransactionMaker,
@@ -873,13 +1245,21 @@ STATIC const mp_rom_map_elem_t mod_trezorcrypto_beam_globals_table[] = {
     //DEPRECATED
     {MP_ROM_QSTR(MP_QSTR_generate_rp_from_key_idv),
      MP_ROM_PTR(&mod_trezorcrypto_beam_generate_rp_from_key_idv_obj)},
+    //DEPRECATED
     {MP_ROM_QSTR(MP_QSTR_KeyIDV),
      MP_ROM_PTR(&mod_trezorcrypto_beam_key_idv_type)},
+    //DEPRECATED
     {MP_ROM_QSTR(MP_QSTR_TransactionMaker),
      MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_maker_type)},
     // NEW CRYPTO
     {MP_ROM_QSTR(MP_QSTR_generate_rp_from_cid),
      MP_ROM_PTR(&mod_trezorcrypto_beam_generate_rp_from_cid_obj)},
+    // CoinID
+    {MP_ROM_QSTR(MP_QSTR_CoinID),
+     MP_ROM_PTR(&mod_trezorcrypto_beam_coin_id_type)},
+    // TransactionManager
+    {MP_ROM_QSTR(MP_QSTR_TransactionManager),
+     MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_type)},
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_trezorcrypto_beam_globals,

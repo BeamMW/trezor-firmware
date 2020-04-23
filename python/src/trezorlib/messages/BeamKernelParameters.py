@@ -3,6 +3,7 @@
 from .. import protobuf as p
 
 from .BeamECCPoint import BeamECCPoint
+from .BeamSignature import BeamSignature
 
 if __debug__:
     try:
@@ -17,32 +18,23 @@ class BeamKernelParameters(p.MessageType):
     def __init__(
         self,
         fee: int = None,
-        commitment: BeamECCPoint = None,
         min_height: int = None,
         max_height: int = None,
-        asset_emission: int = None,
-        hash_lock: bytes = None,
-        multisig_nonce: BeamECCPoint = None,
-        multisig_excess: BeamECCPoint = None,
+        commitment: BeamECCPoint = None,
+        signature: BeamSignature = None,
     ) -> None:
         self.fee = fee
-        self.commitment = commitment
         self.min_height = min_height
         self.max_height = max_height
-        self.asset_emission = asset_emission
-        self.hash_lock = hash_lock
-        self.multisig_nonce = multisig_nonce
-        self.multisig_excess = multisig_excess
+        self.commitment = commitment
+        self.signature = signature
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
             1: ('fee', p.UVarintType, 0),
-            2: ('commitment', BeamECCPoint, 0),
-            4: ('min_height', p.UVarintType, 0),
-            5: ('max_height', p.UVarintType, 0),
-            6: ('asset_emission', p.SVarintType, 0),
-            7: ('hash_lock', p.BytesType, 0),
-            8: ('multisig_nonce', BeamECCPoint, 0),
-            9: ('multisig_excess', BeamECCPoint, 0),
+            2: ('min_height', p.UVarintType, 0),
+            3: ('max_height', p.UVarintType, 0),
+            4: ('commitment', BeamECCPoint, 0),
+            5: ('signature', BeamSignature, 0),
         }

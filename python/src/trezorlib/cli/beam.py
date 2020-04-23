@@ -114,7 +114,7 @@ def beam_generate_key(connect, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, co
     help="Slot where to nonce should be stored. Value should be in range (0, 255)",
 )
 @click.pass_obj
-def beam_generate_nonce(connect, slot):
+def generate_nonce(connect, slot):
     client = connect()
 
     return beam.generate_nonce(client, slot)
@@ -128,7 +128,7 @@ def beam_generate_nonce(connect, slot):
     help="Slot where to nonce should be stored. Value should be in range (0, 255)",
 )
 @click.pass_obj
-def beam_get_nonce_image(connect, slot):
+def get_nonce_image(connect, slot):
     client = connect()
 
     return beam.get_nonce_image(client, slot)
@@ -156,6 +156,87 @@ def generate_rangeproof(
     )
 
 
+@cli.command(help="Sign Beam transaction (Send part)")
+@click.option(
+    "-f",
+    "--file",
+    type=click.File("r"),
+    required=True,
+    help="Transaction in JSON format",
+)
+@click.pass_obj
+def sign_tx_send(connect, file):
+    client = connect()
+
+    transaction = json.load(file)
+    beam.check_tx_data(transaction, beam.SignTxType.send)
+
+    tx_common = beam.create_tx_common(transaction["tx_common"])
+    tx_mutual_info = beam.create_tx_mutual_info(transaction["tx_mutual_info"])
+
+    signed_transaction = beam.sign_tx_send(
+        client,
+        tx_common,
+        tx_mutual_info,
+        transaction["nonce_slot"],
+        transaction["user_agreement"],
+    )
+
+    return signed_transaction
+
+
+@cli.command(help="Sign Beam transaction (Receive part)")
+@click.option(
+    "-f",
+    "--file",
+    type=click.File("r"),
+    required=True,
+    help="Transaction in JSON format",
+)
+@click.pass_obj
+def sign_tx_receive(connect, file):
+    client = connect()
+
+    transaction = json.load(file)
+    beam.check_tx_data(transaction, beam.SignTxType.receive)
+
+    tx_common = beam.create_tx_common(transaction["tx_common"])
+    tx_mutual_info = beam.create_tx_mutual_info(transaction["tx_mutual_info"])
+
+    signed_transaction = beam.sign_tx_receive(
+        client,
+        tx_common,
+        tx_mutual_info,
+    )
+
+    return signed_transaction
+
+
+@cli.command(help="Sign Beam transaction (Split part)")
+@click.option(
+    "-f",
+    "--file",
+    type=click.File("r"),
+    required=True,
+    help="Transaction in JSON format",
+)
+@click.pass_obj
+def sign_tx_split(connect, file):
+    client = connect()
+
+    transaction = json.load(file)
+    beam.check_tx_data(transaction, beam.SignTxType.split)
+
+    tx_common = beam.create_tx_common(transaction["tx_common"])
+
+    signed_transaction = beam.sign_tx_split(
+        client,
+        tx_common,
+    )
+
+    return signed_transaction
+
+
 @cli.command(help="Sign Beam transaction.")
 @click.option(
     "-f",
@@ -165,7 +246,7 @@ def generate_rangeproof(
     help="Transaction in JSON format",
 )
 @click.pass_obj
-def beam_sign_tx(connect, file):
+def beam_sign_tx_old(connect, file):
     client = connect()
 
     transaction = json.load(file)

@@ -14,32 +14,58 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import json
+
 from typing import List
 
 from . import messages
 from .tools import CallException, expect, normalize_nfc, session
 
-REQUIRED_FIELDS_KIDV = ["idx", "type", "sub_idx", "value"]
-REQUIRED_FIELDS_TRANSACTION = [
+from enum import Enum
+
+
+class SignTxType(Enum):
+    send = 1
+    receive = 2
+    split = 3
+
+REQUIRED_FIELDS_ECC_POINT = ["x", "y"]
+REQUIRED_FIELDS_COIN_ID = ["idx", "type", "sub_idx", "amount", "asset_id"]
+REQUIRED_FIELDS_SIGNATURE = ["nonce_pub", "k"]
+REQUIRED_FIELDS_KERNEL_PARAMS = [
+    "fee",
+    "min_height",
+    "max_height",
+    "commitment",
+    "signature",
+]
+REQUIRED_FIELDS_TX_COMMON = [
     "inputs",
     "outputs",
     "offset_sk",
+    "kernel_params",
+]
+REQUIRED_FIELDS_TX_MUTUAL_INFO = [
+    "peer",
+    "wallet_identity_key",
+    "payment_proof_signature",
+]
+REQUIRED_FIELDS_TRANSACTION_SEND = [
+    "tx_common",
+    "tx_mutual_info",
     "nonce_slot",
-    "kernel_parameters",
+    "user_agreement",
 ]
-REQUIRED_FIELDS_KERNEL_PARAMS = [
-    "fee",
-    "commitment",
-    "min_height",
-    "max_height",
-    "asset_emission",
-    "hash_lock",
-    "multisig",
+REQUIRED_FIELDS_TRANSACTION_RECEIVE = [
+    "tx_common",
+    "tx_mutual_info",
 ]
-REQUIRED_FIELDS_ECC_POINT = ["x", "y"]
-REQUIRED_FIELDS_MULTISIG = ["nonce", "excess"]
+REQUIRED_FIELDS_TRANSACTION_SPLIT = [
+    "tx_common",
+]
 
 
+# DEPRECATED
 @expect(messages.BeamSignature)
 def sign_message(client, message, kid_idx, kid_sub_idx, show_display=True):
     return client.call(
@@ -52,6 +78,7 @@ def sign_message(client, message, kid_idx, kid_sub_idx, show_display=True):
     )
 
 
+# DEPRECATED
 def verify_message(client, nonce_pub_x, nonce_pub_y, sign_k, pk_x, pk_y, message):
     nonce_pub_x = hex_str_to_bytearray(nonce_pub_x, "Nonce X", True)
     nonce_pub_y = int(nonce_pub_y)
@@ -77,6 +104,7 @@ def verify_message(client, nonce_pub_x, nonce_pub_y, sign_k, pk_x, pk_y, message
     return False
 
 
+# DEPRECATED
 @expect(messages.BeamECCPoint)
 def get_public_key(client, kid_idx, kid_sub_idx, show_display=True):
     return client.call(
@@ -93,6 +121,7 @@ def get_owner_key(client, show_display=True):
     return client.call(messages.BeamGetOwnerKey(show_display=show_display))
 
 
+# DEPRECATED
 @expect(messages.BeamECCPoint)
 def generate_key(client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_coin_key):
     kidv = messages.BeamKeyIDV(
@@ -130,7 +159,54 @@ def generate_rangeproof(
 
     return client.call(messages.BeamGenerateRangeproof(cid=cid, pt0=pt0, pt1=pt1))
 
+@session
+#@expect(messages.BeamSignTransactionSendResult)
+def sign_tx_send(
+    client,
+    tx_common,
+    tx_mutual_info,
+    nonce_slot,
+    user_agreement,
+):
+    response = client.call(
+        messages.BeamSignTransactionSend(
+            tx_common=tx_common,
+            tx_mutual_info=tx_mutual_info,
+            nonce_slot=nonce_slot,
+            user_agreement=bytearray(user_agreement, "utf-8"),
+        )
+    )
+    return response
 
+@session
+#@expect(messages.BeamSignTransactionReceiveResult)
+def sign_tx_receive(
+    client,
+    tx_common,
+    tx_mutual_info,
+):
+    response = client.call(
+        messages.BeamSignTransactionReceive(
+            tx_common=tx_common,
+            tx_mutual_info=tx_mutual_info,
+        )
+    )
+    return response
+
+@session
+#@expect(messages.BeamSignTransactionSendResult)
+def sign_tx_split(
+    client,
+    tx_common,
+):
+    response = client.call(
+        messages.BeamSignTransactionSplit(
+            tx_common=tx_common,
+        )
+    )
+    return response
+
+# DEPRECATED
 @session
 @expect(messages.BeamSignedTransaction)
 def sign_tx(
@@ -164,17 +240,39 @@ def _check_required_fields(data, required_fields, error_message):
         )
 
 
-def check_transaction_data(transaction):
+def check_tx_data(transaction, signTxType):
+    required_fields = []
+    if signTxType == SignTxType.send:
+        required_fields = REQUIRED_FIELDS_TRANSACTION_SEND
+    elif signTxType == SignTxType.receive:
+        required_fields = REQUIRED_FIELDS_TRANSACTION_RECEIVE
+    elif signTxType == SignTxType.split:
+        required_fields = REQUIRED_FIELDS_TRANSACTION_SPLIT
+    else:
+        raise ValueError("Wrong SignTxType passed")
+
     _check_required_fields(
         transaction,
-        REQUIRED_FIELDS_TRANSACTION,
+        required_fields,
         "The transaction is missing some fields",
     )
 
-    for input in transaction["inputs"]:
-        _check_required_fields(input, REQUIRED_FIELDS_KIDV, "Input")
-    for output in transaction["outputs"]:
-        _check_required_fields(output, REQUIRED_FIELDS_KIDV, "Output")
+    _check_required_fields(transaction["tx_common"], REQUIRED_FIELDS_TX_COMMON, "TxCommon")
+    if signTxType == SignTxType.receive or SignTxType == SignTxType.send:
+        _check_required_fields(transaction["tx_mutual_info"], REQUIRED_FIELDS_TX_COMMON, "TxMutualInfo")
+        _check_required_fields(
+            transaction["tx_mutual_info"]["signature"],
+            REQUIRED_FIELDS_TX_COMMON,
+            "PaymentProofSignature")
+        _check_required_fields(
+            transaction["tx_mutual_info"]["signature"]["nonce_pub"],
+            REQUIRED_FIELDS_TX_COMMON,
+            "PaymentProofSignature - NoncePub")
+
+    for input in transaction["tx_common"]["inputs"]:
+        _check_required_fields(input, REQUIRED_FIELDS_COIN_ID, "Input")
+    for output in transaction["tx_common"]["outputs"]:
+        _check_required_fields(output, REQUIRED_FIELDS_COIN_ID, "Output")
 
     _check_required_fields(
         transaction["kernel_parameters"],
@@ -182,30 +280,31 @@ def check_transaction_data(transaction):
         "Kernel parameters",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["multisig"],
-        REQUIRED_FIELDS_MULTISIG,
-        "Multisig",
+        transaction["kernel_parameters"]["commitment"],
+        REQUIRED_FIELDS_ECC_POINT,
+        "Kernel Commitment",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["multisig"]["nonce"],
-        REQUIRED_FIELDS_ECC_POINT,
-        "Multisig",
+        transaction["kernel_parameters"]["signature"],
+        REQUIRED_FIELDS_SIGNATURE,
+        "Kernel Signature",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["multisig"]["excess"],
-        REQUIRED_FIELDS_ECC_POINT,
-        "Multisig",
+        transaction["kernel_parameters"]["signature"]["nonce_pub"],
+        REQUIRED_FIELDS_SIGNATURE,
+        "Kernel Signature - NoncePub",
     )
 
 
-def create_kidv(kidv) -> messages.BeamKeyIDV:
-    _check_required_fields(kidv, REQUIRED_FIELDS_KIDV, "Input/Output")
+def create_coin_id(cid) -> messages.BeamCoinID:
+    _check_required_fields(cid, REQUIRED_FIELDS_COIN_ID, "Input/Output")
 
-    return messages.BeamKeyIDV(
-        idx=int(kidv["idx"]),
-        type=int(kidv["type"]),
-        sub_idx=int(kidv["sub_idx"]),
-        value=int(kidv["value"]),
+    return messages.BeamCoinID(
+        idx=int(cid["idx"]),
+        type=int(cid["type"]),
+        sub_idx=int(cid["sub_idx"]),
+        amount=int(cid["amount"]),
+        asset_id=int(cid["asset_id"]),
     )
 
 
@@ -215,18 +314,53 @@ def create_point(point) -> messages.BeamECCPoint:
     return messages.BeamECCPoint(x=bytearray(point["x"], "utf-8"), y=bool(point["y"]))
 
 
+def create_signature(signature) -> messages.BeamSignature:
+    _check_required_fields(point, REQUIRED_FIELDS_SIGNATURE, "Signature")
+
+    return messages.BeamSignature(
+        nonce_pub=create_point(signature["nonce_pub"]),
+        sign_k=bytearray(params["k"], "utf-8"),
+    )
+
+
 def create_kernel_params(params) -> messages.BeamKernelParameters:
     _check_required_fields(params, REQUIRED_FIELDS_KERNEL_PARAMS, "Kernel parameters")
 
     return messages.BeamKernelParameters(
         fee=int(params["fee"]),
-        commitment=create_point(params["commitment"]),
         min_height=int(params["min_height"]),
         max_height=int(params["max_height"]),
-        asset_emission=int(params["asset_emission"]),
-        hash_lock=bytearray(params["hash_lock"], "utf-8"),
-        multisig_nonce=create_point(params["multisig"]["nonce"]),
-        multisig_excess=create_point(params["multisig"]["excess"]),
+        commitment=create_point(params["commitment"]),
+        signature=create_signature(params["signature"]),
+    )
+
+
+def create_tx_common(params) -> messages.BeamTxCommon:
+    _check_required_fields(params, REQUIRED_FIELDS_TX_COMMON, "TxCommon")
+
+    for input in params["inputs"]:
+        _check_required_fields(input, REQUIRED_FIELDS_KIDV, "Input")
+    for output in params["outputs"]:
+        _check_required_fields(output, REQUIRED_FIELDS_KIDV, "Output")
+
+    inputs = [create_coin_id(input) for input in params["inputs"]]
+    outputs = [create_coin_id(output) for output in params["outputs"]]
+
+    return messages.BeamTxCommon(
+        inputs=inputs,
+        offset_sk=bytearray(params["offset_sk"], "utf-8"),
+        outputs=outputs,
+        kernel_params=create_kernel_params(params["kernel_params"])
+    )
+
+
+def create_tx_mutual_info(params) -> messages.BeamTxMutualInfo:
+    _check_required_fields(params, REQUIRED_FIELDS_TX_MUTUAL_INFO, "TxMutualInfo")
+
+    return messages.BeamTxMutualInfo(
+        peer=bytearray(params["peer"], "utf-8"),
+        wallet_identity_key=int(params["wallet_identity_key"]),
+        payment_proof_signature=create_signature(params["payment_proof_signature"]),
     )
 
 

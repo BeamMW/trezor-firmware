@@ -173,9 +173,9 @@ message BeamSignTransaction {
     optional bytes offset_sk = 2; // Randomly generated offset (scalar)
     repeated BeamKeyIDV outputs = 3; // KIDV outputs
     optional uint32 nonce_slot = 4; // nonce slot which should be used
-    optional BeamKernelParameters kernel_params = 5; // kernel parameters for challenge
+    optional BeamKernelParametersOld kernel_params = 5; // kernel parameters for challenge
 
-    message BeamKernelParameters {
+    message BeamKernelParametersOld {
         optional uint64 fee = 1;
         optional BeamECCPoint commitment = 2;
         optional uint64 min_height = 4;
@@ -187,3 +187,88 @@ message BeamSignTransaction {
     }
 }
 
+/**
+ * Structure representing Beam common transaction data
+ * @embed
+ * @end
+ */
+message BeamTxCommon {
+    repeated BeamCoinID inputs = 1; // KIDV inputs
+    optional bytes offset_sk = 2; // Randomly generated offset (scalar)
+    repeated BeamCoinID outputs = 3; // KIDV outputs
+    optional BeamKernelParameters kernel_params = 4; // kernel parameters for challenge
+
+    message BeamKernelParameters {
+        optional uint64 fee = 1;
+        optional uint64 min_height = 2;
+        optional uint64 max_height = 3;
+        optional BeamECCPoint commitment = 4;
+        optional BeamSignature signature = 5;
+    }
+}
+
+/**
+ * Structure representing Beam mutual transaction data
+ * @embed
+ * @end
+ */
+message BeamTxMutualInfo {
+    optional bytes peer = 1; // Peer ID
+    optional uint64 wallet_identity_key = 2; // Wallet identity ID Key
+    optional BeamSignature payment_proof_signature = 3; // payment proof signature
+}
+
+/**
+ * Request: sign transaction (send part). Performed 2 times.
+ * @next BeamSignedTransactionSendResult
+ * @next Failure
+ */
+message BeamSignTransactionSend {
+    optional BeamTxCommon tx_common = 1; // Common transaction data
+    optional BeamTxMutualInfo tx_mutual_info = 2; // Mutual transaction data
+    optional uint32 nonce_slot = 3; // nonce slot which should be used
+    optional bytes user_agreement = 4; // user agreement data. Set to Zero on 1st invocation
+}
+
+/**
+ * Response: signed transaction (send part)
+ * @end
+ */
+message BeamSignTransactionSendResult {
+    optional BeamSignTransactionSend tx = 1; // TODO
+}
+
+/**
+ * Request: sign transaction (receive part)
+ * @next BeamSignedTransactionReceiveResult
+ * @next Failure
+ */
+message BeamSignTransactionReceive {
+    optional BeamTxCommon tx_common = 1; // Common transaction data
+    optional BeamTxMutualInfo tx_mutual_info = 2; // Mutual transaction data
+}
+
+/**
+ * Response: signed transaction (receive part)
+ * @end
+ */
+message BeamSignTransactionReceiveResult {
+    optional BeamSignTransactionReceive tx = 1; // TODO
+}
+
+/**
+ * Request: sign transaction (split part - self send)
+ * @next BeamSignedTransactionSplitResult
+ * @next Failure
+ */
+message BeamSignTransactionSplit {
+    optional BeamTxCommon tx_common = 1; // Common transaction data
+}
+
+/**
+ * Response: signed transaction (split part)
+ * @end
+ */
+message BeamSignTransactionSplitResult {
+    optional BeamSignTransactionSplit tx = 1; // TODO
+}

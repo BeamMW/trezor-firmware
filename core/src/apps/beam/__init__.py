@@ -17,3 +17,6 @@ def boot() -> None:
     wire.add(MessageType.BeamGetNoncePublic, __name__, "get_nonce_public")
     wire.add(MessageType.BeamGenerateRangeproof, __name__, "generate_rangeproof")
     wire.add(MessageType.BeamSignTransaction, __name__, "sign_transaction")
+    wire.add(MessageType.BeamSignTransactionSend, __name__, "sign_transaction_send")
+    wire.add(MessageType.BeamSignTransactionReceive, __name__, "sign_transaction_receive")
+    wire.add(MessageType.BeamSignTransactionSplit, __name__, "sign_transaction_split")
