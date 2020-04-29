@@ -264,4 +264,10 @@ enum MessageType {
     MessageType_BeamSignTransaction = 914 [(wire_in) = true];
     MessageType_BeamSignedTransaction = 915 [(wire_out) = true];
     MessageType_BeamGetNoncePublic = 916 [(wire_in) = true];
+    MessageType_BeamSignTransactionSend = 917 [(wire_in) = true];
+    MessageType_BeamSignTransactionSendResult = 918 [(wire_out) = true];
+    MessageType_BeamSignTransactionReceive = 919 [(wire_in) = true];
+    MessageType_BeamSignTransactionReceiveResult = 920 [(wire_out) = true];
+    MessageType_BeamSignTransactionSplit = 921 [(wire_in) = true];
+    MessageType_BeamSignTransactionSplitResult = 922 [(wire_out) = true];
 }

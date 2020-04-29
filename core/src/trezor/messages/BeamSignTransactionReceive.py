@@ -14,6 +14,7 @@ if __debug__:
 
 
 class BeamSignTransactionReceive(p.MessageType):
+    MESSAGE_WIRE_TYPE = 919
 
     def __init__(
         self,

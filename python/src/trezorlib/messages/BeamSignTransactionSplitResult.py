@@ -13,6 +13,7 @@ if __debug__:
 
 
 class BeamSignTransactionSplitResult(p.MessageType):
+    MESSAGE_WIRE_TYPE = 922
 
     def __init__(
         self,
