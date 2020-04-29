@@ -43,7 +43,7 @@ REQUIRED_FIELDS_TX_COMMON = [
     "inputs",
     "outputs",
     "offset_sk",
-    "kernel_params",
+    "kernel_parameters",
 ]
 REQUIRED_FIELDS_TX_MUTUAL_INFO = [
     "peer",
@@ -261,11 +261,11 @@ def check_tx_data(transaction, signTxType):
     if signTxType == SignTxType.receive or SignTxType == SignTxType.send:
         _check_required_fields(transaction["tx_mutual_info"], REQUIRED_FIELDS_TX_COMMON, "TxMutualInfo")
         _check_required_fields(
-            transaction["tx_mutual_info"]["signature"],
+            transaction["tx_mutual_info"]["payment_proof_signature"],
             REQUIRED_FIELDS_TX_COMMON,
             "PaymentProofSignature")
         _check_required_fields(
-            transaction["tx_mutual_info"]["signature"]["nonce_pub"],
+            transaction["tx_mutual_info"]["payment_proof_signature"]["nonce_pub"],
             REQUIRED_FIELDS_TX_COMMON,
             "PaymentProofSignature - NoncePub")
 
@@ -275,23 +275,23 @@ def check_tx_data(transaction, signTxType):
         _check_required_fields(output, REQUIRED_FIELDS_COIN_ID, "Output")
 
     _check_required_fields(
-        transaction["kernel_parameters"],
+        transaction["tx_common"]["kernel_parameters"],
         REQUIRED_FIELDS_KERNEL_PARAMS,
         "Kernel parameters",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["commitment"],
+        transaction["tx_common"]["kernel_parameters"]["commitment"],
         REQUIRED_FIELDS_ECC_POINT,
         "Kernel Commitment",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["signature"],
+        transaction["tx_common"]["kernel_parameters"]["signature"],
         REQUIRED_FIELDS_SIGNATURE,
         "Kernel Signature",
     )
     _check_required_fields(
-        transaction["kernel_parameters"]["signature"]["nonce_pub"],
-        REQUIRED_FIELDS_SIGNATURE,
+        transaction["tx_common"]["kernel_parameters"]["signature"]["nonce_pub"],
+        REQUIRED_FIELDS_ECC_POINT,
         "Kernel Signature - NoncePub",
     )
 
@@ -315,11 +315,11 @@ def create_point(point) -> messages.BeamECCPoint:
 
 
 def create_signature(signature) -> messages.BeamSignature:
-    _check_required_fields(point, REQUIRED_FIELDS_SIGNATURE, "Signature")
+    _check_required_fields(signature, REQUIRED_FIELDS_SIGNATURE, "Signature")
 
     return messages.BeamSignature(
         nonce_pub=create_point(signature["nonce_pub"]),
-        sign_k=bytearray(params["k"], "utf-8"),
+        sign_k=bytearray(signature["k"], "utf-8"),
     )
 
 
@@ -339,9 +339,9 @@ def create_tx_common(params) -> messages.BeamTxCommon:
     _check_required_fields(params, REQUIRED_FIELDS_TX_COMMON, "TxCommon")
 
     for input in params["inputs"]:
-        _check_required_fields(input, REQUIRED_FIELDS_KIDV, "Input")
+        _check_required_fields(input, REQUIRED_FIELDS_COIN_ID, "Input")
     for output in params["outputs"]:
-        _check_required_fields(output, REQUIRED_FIELDS_KIDV, "Output")
+        _check_required_fields(output, REQUIRED_FIELDS_COIN_ID, "Output")
 
     inputs = [create_coin_id(input) for input in params["inputs"]]
     outputs = [create_coin_id(output) for output in params["outputs"]]
@@ -350,7 +350,7 @@ def create_tx_common(params) -> messages.BeamTxCommon:
         inputs=inputs,
         offset_sk=bytearray(params["offset_sk"], "utf-8"),
         outputs=outputs,
-        kernel_params=create_kernel_params(params["kernel_params"])
+        kernel_params=create_kernel_params(params["kernel_parameters"])
     )
 
 
