@@ -1,99 +1,11 @@
 import gc
+import storage
 
 from trezor.crypto import beam
 from trezor.messages.BeamSignedTransaction import BeamSignedTransaction
 
 from apps.beam.layout import beam_confirm_message
 from apps.beam.nonce import consume_nonce
-from apps.common import storage
-
-
-async def sign_transaction_send(ctx, msg):
-    gc.collect()
-
-    mnemonic = storage.device.get_mnemonic_secret()
-    seed = beam.from_mnemonic_beam(mnemonic)
-
-    transaction_manager = beam.TransactionManager()
-    transaction_manager.init_keykeeper(seed)
-    _sign_transaction_set_common_info(transaction_manager, msg)
-    _sign_transaction_set_mutual_info(transaction_manager, msg)
-    _sign_transaction_set_sender_params(transaction_manager, msg)
-
-    # TODO
-    send_phase = 1
-    transaction_manager.sign_transaction_send(send_phase)
-
-
-async def sign_transaction_receive(ctx, msg):
-    gc.collect()
-
-    mnemonic = storage.device.get_mnemonic_secret()
-    seed = beam.from_mnemonic_beam(mnemonic)
-
-    transaction_manager = beam.TransactionManager()
-    transaction_manager.init_keykeeper(seed)
-    _sign_transaction_set_common_info(transaction_manager, msg)
-    _sign_transaction_set_mutual_info(transaction_manager, msg)
-
-    transaction_manager.sign_transaction_receive()
-
-
-async def sign_transaction_split(ctx, msg):
-    gc.collect()
-
-    mnemonic = storage.device.get_mnemonic_secret()
-    seed = beam.from_mnemonic_beam(mnemonic)
-
-    transaction_manager = beam.TransactionManager()
-    transaction_manager.init_keykeeper(seed)
-    _sign_transaction_set_common_info(transaction_manager, msg)
-
-    transaction_manager.sign_transaction_split()
-
-
-def _sign_transaction_add_inputs_outputs(transaction_manager, msg):
-    for input in msg.inputs:
-        cid = beam.CoinID()
-        cid.set(input.idx, input.type, input.sub_idx, input.amount, input.asset_id)
-        transaction_manager.add_input(kidv)
-
-    for output in msg.outputs:
-        cid = beam.KeyIDV()
-        cid.set(output.idx, output.type, output.sub_idx, output.amount, output.asset_id)
-        transaction_manager.add_output(kidv)
-
-
-def _sign_transaction_set_common_info(transaction_manager, msg):
-    _sign_transaction_add_inputs_outputs(transaction_manager, msg)
-    transaction_manager.set_common_info(
-        msg.tx_common.kernel_params.fee,
-        msg.tx_common.kernel_params.min_height,
-        msg.tx_common.kernel_params.max_height,
-        msg.tx_common.kernel_params.commitment.x,
-        msg.tx_common.kernel_params.commitment.y,
-        msg.tx_common.kernel_params.signature.nonce_pub.x,
-        msg.tx_common.kernel_params.signature.nonce_pub.y,
-        msg.tx_common.kernel_params.signature.sign_k,
-        msg.tx_common.offset_sk,
-    )
-
-
-def _sign_transaction_set_mutual_info(transaction_manager, msg):
-    transaction_manager.set_mutual_info(
-        msg.tx_mutual_info.peer,
-        msg.tx_mutual_info.wallet_identity_key,
-        msg.tx_mutual_info.payment_proof_signature.nonce_pub.x,
-        msg.tx_mutual_info.payment_proof_signature.nonce_pub.y,
-        msg.tx_mutual_info.payment_proof_signature.sign_k,
-    )
-
-
-def _sign_transaction_set_sender_params(transaction_manager, msg):
-    transaction_manager.set_sender_params(
-        msg.nonce_slot,
-        msg.user_agreement,
-    )
 
 
 # DEPRECATED

@@ -4,6 +4,7 @@ from trezor import wire
 from trezor.crypto import beam, random
 
 from apps.common import mnemonic
+from ubinascii import unhexlify
 
 
 def BBS_KEY():
@@ -94,3 +95,82 @@ def rand_pswd(size=8):
     """Generate a random password of fixed length """
     charset = "12346789ACDEFGHJKLMNPQRTUVWXYabcdefghijkmnopqrstuvwxyz"
     return "".join(charset[random.uniform(len(charset))] for _ in range(size))
+
+
+###
+### TRANSACTION MANAGER HELPERS
+###
+
+def hexarr2bin(hex_bytearray):
+    hex_str = str(hex_bytearray, 'hex')
+    if len(hex_str) < 2:
+        raise ValueError("Bad input for hexarr2bin!")
+
+    if hex_str[0:2] == "0x":
+        hex_str = hex_str[2:]
+    return unhexlify(hex_str)
+
+
+def tm_sign_transaction_add_inputs_outputs(transaction_manager, msg):
+    for input in msg.tx_common.inputs:
+        cid = beam.CoinID()
+        cid.set(input.idx, input.type, input.sub_idx, input.amount, input.asset_id)
+        transaction_manager.add_input(cid)
+
+    for output in msg.tx_common.outputs:
+        cid = beam.CoinID()
+        cid.set(output.idx, output.type, output.sub_idx, output.amount, output.asset_id)
+        transaction_manager.add_output(cid)
+
+
+def tm_sign_transaction_set_common_info(transaction_manager, msg):
+    tm_sign_transaction_add_inputs_outputs(transaction_manager, msg)
+    transaction_manager.set_common_info(
+        msg.tx_common.kernel_params.fee,
+        msg.tx_common.kernel_params.min_height,
+        msg.tx_common.kernel_params.max_height,
+        hexarr2bin(msg.tx_common.kernel_params.commitment.x),
+        msg.tx_common.kernel_params.commitment.y,
+        hexarr2bin(msg.tx_common.kernel_params.signature.nonce_pub.x),
+        msg.tx_common.kernel_params.signature.nonce_pub.y,
+        hexarr2bin(msg.tx_common.kernel_params.signature.sign_k),
+        hexarr2bin(msg.tx_common.offset_sk),
+    )
+
+
+def tm_sign_transaction_set_mutual_info(transaction_manager, msg):
+    transaction_manager.set_mutual_info(
+        hexarr2bin(msg.tx_mutual_info.peer),
+        msg.tx_mutual_info.wallet_identity_key,
+        hexarr2bin(msg.tx_mutual_info.payment_proof_signature.nonce_pub.x),
+        msg.tx_mutual_info.payment_proof_signature.nonce_pub.y,
+        hexarr2bin(msg.tx_mutual_info.payment_proof_signature.sign_k),
+    )
+
+
+def tm_sign_transaction_set_sender_params(transaction_manager, msg):
+    transaction_manager.set_sender_params(
+        msg.nonce_slot,
+        hexarr2bin(msg.user_agreement),
+    )
+
+
+def tm_get_point(transaction_manager, point_type):
+    point_x = bytearray(32)
+    point_y = bytearray(1)
+    res = transaction_manager.get_point(point_type, point_x, point_y)
+
+    if res != 0:
+        print("tm_get_point: wrong point type provided!");
+
+    return (point_x, int(point_y[0]))
+
+
+def tm_get_scalar(transaction_manager, scalar_type):
+    scalar_data = bytearray(32)
+    res = transaction_manager.get_scalar(scalar_type, scalar_data)
+
+    if res != 0:
+        print("tm_get_scalar: wrong scalar type provided!");
+
+    return scalar_data
