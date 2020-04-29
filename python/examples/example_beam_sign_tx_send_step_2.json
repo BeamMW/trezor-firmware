@@ -1,0 +1,59 @@
+{
+    "tx_common": {
+        "inputs": [
+            {
+                "idx": 1,
+                "type": 1,
+                "sub_idx": 1,
+                "amount": 2,
+                "asset_id": 0
+            },
+            {
+                "idx": 2,
+                "type": 2,
+                "sub_idx": 2,
+                "amount": 5,
+                "asset_id": 0
+            }
+        ],
+        "outputs": [
+            {
+                "idx": 3,
+                "type": 3,
+                "sub_idx": 3,
+                "amount": 3,
+                "asset_id": 0
+            }
+        ],
+        "offset_sk": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef",
+        "kernel_parameters": {
+            "fee": 1,
+            "min_height": 1,
+            "max_height": 5,
+            "commitment": {
+                "x": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef",
+                "y": 1
+            },
+            "signature": {
+                "nonce_pub": {
+                    "x": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef",
+                    "y": 1
+                },
+                "k": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef"
+            }
+        }
+    },
+    "tx_mutual_info": {
+        "peer": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef",
+        "wallet_identity_key": 25,
+        "payment_proof_signature": {
+            "nonce_pub": {
+                "x": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef",
+                "y": 1
+            },
+            "k": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef"
+        }
+    },
+    "nonce_slot": 2,
+    "user_agreement": "0x12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abcdef12abba5e"
+}
