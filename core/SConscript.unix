@@ -34,7 +34,6 @@ SOURCE_MOD += [
 CCFLAGS_MOD += '-Wno-sequence-point '
 CPPPATH_MOD += [
     'vendor/trezor-crypto',
-    'vendor/trezor-crypto/beam-crypto-hw-lib',
 ]
 CPPDEFINES_MOD += [
     'AES_128',
