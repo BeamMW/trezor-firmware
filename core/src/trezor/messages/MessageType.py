@@ -192,6 +192,7 @@ if not utils.BITCOIN_ONLY:
     WebAuthnCredentials = 801  # type: Literal[801]
     WebAuthnAddResidentCredential = 802  # type: Literal[802]
     WebAuthnRemoveResidentCredential = 803  # type: Literal[803]
+if utils.ENABLE_BEAM:
     BeamSignMessage = 902  # type: Literal[902]
     BeamSignature = 903  # type: Literal[903]
     BeamVerifyMessage = 904  # type: Literal[904]
