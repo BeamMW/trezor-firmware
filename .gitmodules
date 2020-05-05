@@ -26,4 +26,4 @@
 	url = https://github.com/trezor/fido2-tests.git
 [submodule "crypto/beam-crypto-hw-lib"]
 	path = crypto/beam-crypto-hw-lib
-	url = https://github.com/sept-en/beam-crypto-hw-lib-private
+	url = https://github.com/BeamMW/beam-hw-crypto
