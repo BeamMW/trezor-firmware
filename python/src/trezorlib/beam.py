@@ -258,15 +258,15 @@ def check_tx_data(transaction, signTxType):
     )
 
     _check_required_fields(transaction["tx_common"], REQUIRED_FIELDS_TX_COMMON, "TxCommon")
-    if signTxType == SignTxType.receive or SignTxType == SignTxType.send:
-        _check_required_fields(transaction["tx_mutual_info"], REQUIRED_FIELDS_TX_COMMON, "TxMutualInfo")
+    if signTxType == SignTxType.receive or signTxType == SignTxType.send:
+        _check_required_fields(transaction["tx_mutual_info"], REQUIRED_FIELDS_TX_MUTUAL_INFO, "TxMutualInfo")
         _check_required_fields(
             transaction["tx_mutual_info"]["payment_proof_signature"],
-            REQUIRED_FIELDS_TX_COMMON,
+            REQUIRED_FIELDS_SIGNATURE,
             "PaymentProofSignature")
         _check_required_fields(
             transaction["tx_mutual_info"]["payment_proof_signature"]["nonce_pub"],
-            REQUIRED_FIELDS_TX_COMMON,
+            REQUIRED_FIELDS_ECC_POINT,
             "PaymentProofSignature - NoncePub")
 
     for input in transaction["tx_common"]["inputs"]:
