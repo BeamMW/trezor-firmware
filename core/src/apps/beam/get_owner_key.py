@@ -18,24 +18,21 @@ async def get_owner_key(ctx, msg):
     wait_warning_msg = "Please wait few seconds until exporting is done"
     await beam_confirm_message(ctx, "Owner key", wait_warning_msg, False)
 
-    pswd = rand_pswd()
-    owner_key = generate_owner_key(pswd)
+    owner_key = generate_owner_key()
 
     if msg.show_display:
         await beam_confirm_message(
-            ctx, "Owner key", owner_key[:32] + " ... " + owner_key[-32:], True
+            ctx, "Owner key", owner_key[:32], True
         )
-
-    await beam_confirm_message(ctx, "Key Password", pswd, False)
 
     return BeamOwnerKey(key=owner_key)
 
 
-def generate_owner_key(passphrase, mnemonic=None):
-    owner_key = bytearray(108)
+def generate_owner_key(mnemonic=None):
+    owner_key = bytearray(32)
     seed = get_beam_seed(mnemonic)
     beam.export_owner_key(seed, owner_key)
 
-    owner_key = ubinascii.b2a_base64(owner_key)
+    #owner_key = ubinascii.b2a_base64(owner_key)
 
     return owner_key
