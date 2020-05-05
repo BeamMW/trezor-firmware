@@ -2,19 +2,29 @@ import gc
 import storage
 import apps.beam.helpers as helpers
 
+from trezor import wire
+
 from trezor.crypto import beam
 from trezor.messages.BeamSignTransactionSend import BeamSignTransactionSend
 from trezor.messages.BeamSignTransactionSendResult import BeamSignTransactionSendResult
-from trezor.messages.BeamRangeproofData import BeamRangeproofData
 from trezor.messages.BeamSignature import BeamSignature
 from trezor.messages.BeamECCPoint import BeamECCPoint
 
-from apps.beam.layout import beam_confirm_message
-from apps.beam.nonce import consume_nonce
+#from apps.beam.layout import beam_confirm_message
 
 
 async def sign_transaction_send(ctx, msg):
     gc.collect()
+
+    #value_transferred = 2
+    #tx_action_message = "RECEIVE" if value_transferred <= 0 else "TRANSFER"
+    #tx_msg = (
+    #    "Please confirm  "
+    #    + ("receiving " if value_transferred <= 0 else "sending ")
+    #    + str(abs(value_transferred))
+    #    + " Groths"
+    #)
+    #await beam_confirm_message(ctx, tx_action_message + ": ", tx_msg, False)
 
     mnemonic = storage.device.get_mnemonic_secret()
     seed = beam.from_mnemonic_beam(mnemonic)
@@ -25,11 +35,11 @@ async def sign_transaction_send(ctx, msg):
     helpers.tm_sign_transaction_set_mutual_info(transaction_manager, msg)
     helpers.tm_sign_transaction_set_sender_params(transaction_manager, msg)
 
-    # TODO
+    ## TODO
     send_phase = 1
     transaction_manager.sign_transaction_send(send_phase)
 
-    # Set commitment
+    ## Set commitment
     commitment = helpers.tm_get_point(transaction_manager, transaction_manager.TX_COMMON_KERNEL_COMMITMENT)
     kernel_commitment = BeamECCPoint(x=commitment[0], y=commitment[1])
     msg.tx_common.kernel_params.commitment = kernel_commitment
@@ -56,7 +66,8 @@ async def sign_transaction_send(ctx, msg):
     # Set offset scalar
     offset_sk = helpers.tm_get_scalar(transaction_manager, transaction_manager.TX_COMMON_OFFSET_SK)
     msg.tx_common.offset_sk = offset_sk
-
-
     return msg
+
+
+    #return msg
 
