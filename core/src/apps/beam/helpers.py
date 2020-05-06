@@ -129,29 +129,29 @@ def tm_sign_transaction_set_common_info(transaction_manager, msg):
         msg.tx_common.kernel_params.fee,
         msg.tx_common.kernel_params.min_height,
         msg.tx_common.kernel_params.max_height,
-        hexarr2bin(msg.tx_common.kernel_params.commitment.x),
+        msg.tx_common.kernel_params.commitment.x,
         msg.tx_common.kernel_params.commitment.y,
-        hexarr2bin(msg.tx_common.kernel_params.signature.nonce_pub.x),
+        msg.tx_common.kernel_params.signature.nonce_pub.x,
         msg.tx_common.kernel_params.signature.nonce_pub.y,
-        hexarr2bin(msg.tx_common.kernel_params.signature.sign_k),
-        hexarr2bin(msg.tx_common.offset_sk),
+        msg.tx_common.kernel_params.signature.sign_k,
+        msg.tx_common.offset_sk,
     )
 
 
 def tm_sign_transaction_set_mutual_info(transaction_manager, msg):
     transaction_manager.set_mutual_info(
-        hexarr2bin(msg.tx_mutual_info.peer),
+        msg.tx_mutual_info.peer,
         msg.tx_mutual_info.wallet_identity_key,
-        hexarr2bin(msg.tx_mutual_info.payment_proof_signature.nonce_pub.x),
+        msg.tx_mutual_info.payment_proof_signature.nonce_pub.x,
         msg.tx_mutual_info.payment_proof_signature.nonce_pub.y,
-        hexarr2bin(msg.tx_mutual_info.payment_proof_signature.sign_k),
+        msg.tx_mutual_info.payment_proof_signature.sign_k,
     )
 
 
 def tm_sign_transaction_set_sender_params(transaction_manager, msg):
     transaction_manager.set_sender_params(
         msg.nonce_slot,
-        hexarr2bin(msg.user_agreement),
+        msg.user_agreement,
     )
 
 
