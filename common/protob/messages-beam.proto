@@ -136,18 +136,30 @@ message BeamOwnerKey {
 }
 
 /**
- * Request: generate rangeproof (public or confidential) for given kidv
+ * Request: generate rangeproof for given kidv
  * @next BeamRangeproofData
  * @next Failure
  */
 message BeamGenerateRangeproof {
-    optional BeamCoinID cid = 1;  // CoinID to generate key from
+    optional BeamCoinID cid = 1;  // CoinID to generate rangeproof from
     optional BeamECCPoint pt0 = 2; // point0 for rangeproof
     optional BeamECCPoint pt1 = 3; // point1 for rangeproof
 }
 
 /**
- * Response: Contains rangeproof data structure for given kidv
+ * Request: Create output (rangeproof) for the given CoinID and its scheme
+ * @start
+ * @next BeamRangeproofData
+ * @next Failure
+ */
+message BeamCreateOutput {
+    optional uint64 coin_id_scheme = 1; // the version of CoinID scheme
+    optional BeamCoinID coin_id = 2; // CoinID for which output should be created
+}
+
+
+/**
+ * Response: Contains rangeproof data structure for the given kidv
  * @end
  */
 message BeamRangeproofData {
@@ -185,6 +197,44 @@ message BeamSignTransaction {
         optional BeamECCPoint multisig_nonce = 8;
         optional BeamECCPoint multisig_excess = 9;
     }
+}
+
+/**
+ * Request: Ask device for the PKdf
+ * @start
+ * @next BeamPKdf
+ * @next Failure
+ */
+message BeamGetPKdf {
+    optional bool is_root_key = 1; // whether the requested PKdf should be derived from root (owner key).}
+    optional uint32 child_idx = 2; // Child index. If is_root_key==true, this parameter (child_idx) is ignored.
+    optional bool show_display = 3; // optionally show on display before sending the result
+}
+
+/**
+ * Response: Contains PKdf key from device
+ * @end
+ */
+message BeamPKdf {
+    optional bytes key = 1; // public key
+}
+
+/**
+ * Request: Ask device for the number of slots
+ * @start
+ * @next BeamNumSlots
+ * @next Failure - if device is not initialized
+ */
+message BeamGetNumSlots {
+    optional bool show_display = 1; // optionally show on display before sending the result
+}
+
+/**
+ * Response: number of nonce slots available on the device
+ * @end
+ */
+message BeamNumSlots {
+    optional uint32 num_slots = 1; // number of nonce slots available on the device
 }
 
 /**

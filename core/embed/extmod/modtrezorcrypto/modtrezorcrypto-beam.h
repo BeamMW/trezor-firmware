@@ -1005,6 +1005,25 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_export_owner_key_obj, 2, 2,
     mod_trezorcrypto_beam_export_owner_key);
 
+STATIC mp_obj_t mod_trezorcrypto_beam_export_pkdf(size_t n_args,
+                                                  const mp_obj_t* args) {
+  mp_buffer_info_t seed;
+  mp_get_buffer_raise(args[0], &seed, MP_BUFFER_READ);
+
+  const uint32_t child_idx = mp_obj_get_int(args[1]);
+  const uint8_t is_root_key = mp_obj_get_int(args[2]);
+
+  mp_buffer_info_t out_owner_key;
+  mp_get_buffer_raise(args[3], &out_owner_key, MP_BUFFER_RW);
+
+  get_pkdf((const uint8_t*)seed.buf, child_idx, (bool)is_root_key, (uint8_t*)out_owner_key.buf);
+  return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
+    mod_trezorcrypto_beam_export_pkdf_obj, 4, 4,
+    mod_trezorcrypto_beam_export_pkdf);
+
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_key(size_t n_args,
                                                    const mp_obj_t* args) {
   uint64_t idx = mp_obj_get_uint64_beam(args[0]);
@@ -1354,6 +1373,8 @@ STATIC const mp_rom_map_elem_t mod_trezorcrypto_beam_globals_table[] = {
     {MP_ROM_QSTR(MP_QSTR_TransactionMaker),
      MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_maker_type)},
     // NEW CRYPTO
+    {MP_ROM_QSTR(MP_QSTR_export_pkdf),
+     MP_ROM_PTR(&mod_trezorcrypto_beam_export_pkdf_obj)},
     {MP_ROM_QSTR(MP_QSTR_generate_rp_from_cid),
      MP_ROM_PTR(&mod_trezorcrypto_beam_generate_rp_from_cid_obj)},
     // CoinID

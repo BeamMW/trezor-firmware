@@ -134,6 +134,30 @@ def get_nonce_image(connect, slot):
     return beam.get_nonce_image(client, slot)
 
 
+@cli.command(help="Get number of slots available on the device.")
+@click.option("-d", "--show-display", is_flag=True)
+@click.pass_obj
+def get_num_slots(connect, show_display):
+    client = connect()
+    res = beam.get_num_slots(client, show_display)
+    print("Ok")
+    print("Received message: {}".format(res))
+    return res
+
+
+@cli.command(help="Get Beam PKdf.")
+@click.argument("child_idx")
+@click.option("--is-root-key", is_flag=True, default=False)
+@click.option("-d", "--show-display", is_flag=True)
+@click.pass_obj
+def get_pkdf(connect, child_idx, is_root_key, show_display):
+    client = connect()
+    res = beam.get_pkdf(client, is_root_key, child_idx, show_display)
+    print("Ok")
+    print("Received message: {}".format(res))
+    return res
+
+
 @cli.command(
     help="Generate and get a rangeproof for the given CoinID"
 )

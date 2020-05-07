@@ -192,7 +192,6 @@ if not utils.BITCOIN_ONLY:
     WebAuthnCredentials = 801  # type: Literal[801]
     WebAuthnAddResidentCredential = 802  # type: Literal[802]
     WebAuthnRemoveResidentCredential = 803  # type: Literal[803]
-if utils.ENABLE_BEAM:
     BeamSignMessage = 902  # type: Literal[902]
     BeamSignature = 903  # type: Literal[903]
     BeamVerifyMessage = 904  # type: Literal[904]
@@ -213,3 +212,8 @@ if utils.ENABLE_BEAM:
     BeamSignTransactionReceiveResult = 920  # type: Literal[920]
     BeamSignTransactionSplit = 921  # type: Literal[921]
     BeamSignTransactionSplitResult = 922  # type: Literal[922]
+    BeamGetNumSlots = 923  # type: Literal[923]
+    BeamNumSlots = 924  # type: Literal[924]
+    BeamGetPKdf = 925  # type: Literal[925]
+    BeamPKdf = 926  # type: Literal[926]
+    BeamCreateOutput = 927  # type: Literal[927]

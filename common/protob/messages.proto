@@ -270,4 +270,9 @@ enum MessageType {
     MessageType_BeamSignTransactionReceiveResult = 920 [(wire_out) = true];
     MessageType_BeamSignTransactionSplit = 921 [(wire_in) = true];
     MessageType_BeamSignTransactionSplitResult = 922 [(wire_out) = true];
+    MessageType_BeamGetNumSlots = 923 [(wire_in) = true];
+    MessageType_BeamNumSlots = 924 [(wire_out) = true];
+    MessageType_BeamGetPKdf = 925 [(wire_in) = true];
+    MessageType_BeamPKdf = 926 [(wire_out) = true];
+    MessageType_BeamCreateOutput = 927 [(wire_in) = true];
 }

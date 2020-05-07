@@ -143,6 +143,19 @@ def get_nonce_image(client, slot):
     return client.call(messages.BeamGetNoncePublic(slot=int(slot)))
 
 
+@expect(messages.BeamNumSlots)
+def get_num_slots(client, show_display):
+    return client.call(messages.BeamGetNumSlots(show_display=show_display))
+
+
+@expect(messages.BeamPKdf)
+def get_pkdf(client, is_root_key, child_idx, show_display):
+    return client.call(messages.BeamGetPKdf(
+        is_root_key=is_root_key,
+        child_idx=int(child_idx),
+        show_display=show_display))
+
+
 @expect(messages.BeamRangeproofData)
 def generate_rangeproof(
     client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
