@@ -163,9 +163,6 @@ if ENABLE_BEAM == '1':
     CPPDEFINES_MOD += [
         'TREZOR_CRYPTO_MOD',
     ]
-    CPPPATH_MOD += [
-        'vendor/trezor-crypto/beam-crypto-hw-lib',
-    ]
 
 # modtrezorio
 SOURCE_MOD += [
