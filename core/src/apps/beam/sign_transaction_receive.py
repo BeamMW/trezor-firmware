@@ -6,8 +6,11 @@ from trezor import wire
 
 from trezor.crypto import beam
 from trezor.messages.BeamSignTransactionReceiveResult import BeamSignTransactionReceiveResult
+from trezor.messages.BeamSignTransactionReceiveResult import BeamSignTransactionReceiveResult
+from trezor.messages.BeamSignature import BeamSignature
+from trezor.messages.BeamECCPoint import BeamECCPoint
 
-from apps.beam.layout import beam_confirm_message
+#from apps.beam.layout import beam_confirm_message
 
 
 async def sign_transaction_receive(ctx, msg):
@@ -18,8 +21,8 @@ async def sign_transaction_receive(ctx, msg):
 
     transaction_manager = beam.TransactionManager()
     transaction_manager.init_keykeeper(seed)
-    helpers._sign_transaction_set_common_info(transaction_manager, msg)
-    helpers._sign_transaction_set_mutual_info(transaction_manager, msg)
+    helpers.tm_sign_transaction_set_common_info(transaction_manager, msg)
+    helpers.tm_sign_transaction_set_mutual_info(transaction_manager, msg)
 
     transaction_manager.sign_transaction_receive()
 

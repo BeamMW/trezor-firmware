@@ -5,6 +5,7 @@ import apps.beam.helpers as helpers
 from trezor import wire
 
 from trezor.crypto import beam
+
 from trezor.messages.BeamSignTransactionSend import BeamSignTransactionSend
 from trezor.messages.BeamSignTransactionSendResult import BeamSignTransactionSendResult
 from trezor.messages.BeamSignature import BeamSignature
@@ -66,8 +67,6 @@ async def sign_transaction_send(ctx, msg):
     # Set offset scalar
     offset_sk = helpers.tm_get_scalar(transaction_manager, transaction_manager.TX_COMMON_OFFSET_SK)
     msg.tx_common.offset_sk = offset_sk
+
     return msg
-
-
-    #return msg
 

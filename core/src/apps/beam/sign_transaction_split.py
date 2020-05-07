@@ -3,10 +3,14 @@ import storage
 import apps.beam.helpers as helpers
 
 from trezor.crypto import beam
-from trezor.messages.BeamSignTransactionSplit import BeamSignTransactionSplitResult
 
-from apps.beam.layout import beam_confirm_message
-from apps.beam.nonce import consume_nonce
+from trezor.messages.BeamSignTransactionSplit import BeamSignTransactionSplit
+from trezor.messages.BeamSignTransactionSplitResult import BeamSignTransactionSplitResult
+from trezor.messages.BeamSignature import BeamSignature
+from trezor.messages.BeamECCPoint import BeamECCPoint
+
+#from apps.beam.layout import beam_confirm_message
+#from apps.beam.nonce import consume_nonce
 
 
 async def sign_transaction_split(ctx, msg):
@@ -17,7 +21,7 @@ async def sign_transaction_split(ctx, msg):
 
     transaction_manager = beam.TransactionManager()
     transaction_manager.init_keykeeper(seed)
-    helpers._sign_transaction_set_common_info(transaction_manager, msg)
+    helpers.tm_sign_transaction_set_common_info(transaction_manager, msg)
 
     transaction_manager.sign_transaction_split()
 
