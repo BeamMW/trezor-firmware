@@ -514,7 +514,7 @@ if FROZEN:
         ])
     )
 
-    if ENABLE_BEAM:
+    if ENABLE_BEAM == '1':
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/beam/*.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'trezor/messages/Beam*.py'))
     if EVERYTHING and BEAM_ONLY != '1':
@@ -554,11 +554,11 @@ if FROZEN:
 
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/tezos/*.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'trezor/messages/Tezos*.py'))
-
+    if EVERYTHING or ENABLE_BEAM == '1':
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/webauthn/*.py'))
-
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/wallet/sign_tx/decred.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/wallet/sign_tx/zcash.py'))
+
 
     source_mpy = env.FrozenModule(source=SOURCE_PY, source_dir=SOURCE_PY_DIR, bitcoin_only=BITCOIN_ONLY)
 

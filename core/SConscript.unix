@@ -477,7 +477,7 @@ if FROZEN:
         ])
     )
 
-    if ENABLE_BEAM:
+    if ENABLE_BEAM == '1':
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'apps/beam/*.py'))
         SOURCE_PY.extend(Glob(SOURCE_PY_DIR + 'trezor/messages/Beam*.py'))
     if EVERYTHING and BEAM_ONLY != '1':
