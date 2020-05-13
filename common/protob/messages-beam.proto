@@ -136,7 +136,7 @@ message BeamOwnerKey {
 }
 
 /**
- * Request: generate rangeproof for given kidv
+ * Request: generate rangeproof for the given CoinID
  * @next BeamRangeproofData
  * @next Failure
  */
@@ -144,17 +144,8 @@ message BeamGenerateRangeproof {
     optional BeamCoinID cid = 1;  // CoinID to generate rangeproof from
     optional BeamECCPoint pt0 = 2; // point0 for rangeproof
     optional BeamECCPoint pt1 = 3; // point1 for rangeproof
-}
-
-/**
- * Request: Create output (rangeproof) for the given CoinID and its scheme
- * @start
- * @next BeamRangeproofData
- * @next Failure
- */
-message BeamCreateOutput {
-    optional uint64 coin_id_scheme = 1; // the version of CoinID scheme
-    optional BeamCoinID coin_id = 2; // CoinID for which output should be created
+    optional bytes extra_sk0 = 4; // optional extra scalar0
+    optional bytes extra_sk1 = 5; // optional extra scalar1
 }
 
 
@@ -165,6 +156,8 @@ message BeamCreateOutput {
 message BeamRangeproofData {
     optional bytes data_taux = 1; // rangeproof data (TauX)
     optional bool is_successful = 2; // is rangeproof calculate process was successful
+    optional BeamECCPoint pt0 = 3; // point0 of rangeproof data
+    optional BeamECCPoint pt1 = 4; // point1 of rangeproof data
 }
 
 /**

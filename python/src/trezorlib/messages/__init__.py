@@ -6,7 +6,6 @@ from .ApplyFlags import ApplyFlags
 from .ApplySettings import ApplySettings
 from .BackupDevice import BackupDevice
 from .BeamCoinID import BeamCoinID
-from .BeamCreateOutput import BeamCreateOutput
 from .BeamECCPoint import BeamECCPoint
 from .BeamGenerateKey import BeamGenerateKey
 from .BeamGenerateNonce import BeamGenerateNonce

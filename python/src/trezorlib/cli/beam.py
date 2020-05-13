@@ -170,13 +170,24 @@ def get_pkdf(connect, child_idx, is_root_key, show_display):
 @click.argument("pt0_y")
 @click.argument("pt1_x")
 @click.argument("pt1_y")
+@click.argument("extra_sk0", required=False)
+@click.argument("extra_sk1", required=False)
 @click.pass_obj
 def generate_rangeproof(
-    connect, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
+    connect, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y, extra_sk0, extra_sk1
 ):
+    print("Extra scalars provided:")
+    print(extra_sk0)
+    print(extra_sk1)
+    print("===")
     client = connect()
     return beam.generate_rangeproof(
-        client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
+        client,
+        cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id,
+        pt0_x, pt0_y,
+        pt1_x, pt1_y,
+        extra_sk0,
+        extra_sk1
     )
 
 

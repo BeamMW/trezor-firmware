@@ -2,6 +2,8 @@
 # fmt: off
 import protobuf as p
 
+from .BeamECCPoint import BeamECCPoint
+
 if __debug__:
     try:
         from typing import Dict, List  # noqa: F401
@@ -17,13 +19,19 @@ class BeamRangeproofData(p.MessageType):
         self,
         data_taux: bytes = None,
         is_successful: bool = None,
+        pt0: BeamECCPoint = None,
+        pt1: BeamECCPoint = None,
     ) -> None:
         self.data_taux = data_taux
         self.is_successful = is_successful
+        self.pt0 = pt0
+        self.pt1 = pt1
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
             1: ('data_taux', p.BytesType, 0),
             2: ('is_successful', p.BoolType, 0),
+            3: ('pt0', BeamECCPoint, 0),
+            4: ('pt1', BeamECCPoint, 0),
         }

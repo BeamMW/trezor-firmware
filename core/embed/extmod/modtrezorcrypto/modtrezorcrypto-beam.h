@@ -1160,19 +1160,44 @@ STATIC mp_obj_t mod_trezorcrypto_beam_generate_rp_from_cid(
   mp_get_buffer_raise(args[8], &pt1_x, MP_BUFFER_READ);
   const uint8_t pt1_y = mp_obj_get_int(args[9]);
 
-  mp_buffer_info_t out_rp;
-  mp_get_buffer_raise(args[10], &out_rp, MP_BUFFER_RW);
+  const uint8_t use_extra_scalars = mp_obj_get_int(args[10]);
+
+  mp_buffer_info_t extra_sk0;
+  mp_get_buffer_raise(args[11], &extra_sk0, MP_BUFFER_READ);
+
+  mp_buffer_info_t extra_sk1;
+  mp_get_buffer_raise(args[12], &extra_sk1, MP_BUFFER_READ);
+
+  mp_buffer_info_t out_taux;
+  mp_get_buffer_raise(args[13], &out_taux, MP_BUFFER_RW);
+
+  mp_buffer_info_t out_pt0_x;
+  mp_get_buffer_raise(args[14], &out_pt0_x, MP_BUFFER_RW);
+
+  mp_buffer_info_t out_pt0_y;
+  mp_get_buffer_raise(args[15], &out_pt0_y, MP_BUFFER_RW);
+
+  mp_buffer_info_t out_pt1_x;
+  mp_get_buffer_raise(args[16], &out_pt1_x, MP_BUFFER_RW);
+
+  mp_buffer_info_t out_pt1_y;
+  mp_get_buffer_raise(args[17], &out_pt1_y, MP_BUFFER_RW);
 
   const int is_successful = rangeproof_create_from_cid((const uint8_t*)seed.buf,
                                                        &cid,
                                                        (const uint8_t*)pt0_x.buf, pt0_y,
                                                        (const uint8_t*)pt1_x.buf, pt1_y,
-                                                       (uint8_t*)out_rp.buf);
+                                                       use_extra_scalars,
+                                                       (const uint8_t*)extra_sk0.buf,
+                                                       (const uint8_t*)extra_sk1.buf,
+                                                       (uint8_t*)out_taux.buf,
+                                                       (uint8_t*)out_pt0_x.buf, (uint8_t*)out_pt0_y.buf,
+                                                       (uint8_t*)out_pt1_x.buf, (uint8_t*)out_pt1_y.buf);
 
   return mp_obj_new_int(is_successful);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
-    mod_trezorcrypto_beam_generate_rp_from_cid_obj, 11, 11,
+    mod_trezorcrypto_beam_generate_rp_from_cid_obj, 18, 18,
     mod_trezorcrypto_beam_generate_rp_from_cid);
 
 // DEPRECATED

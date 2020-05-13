@@ -158,7 +158,7 @@ def get_pkdf(client, is_root_key, child_idx, show_display):
 
 @expect(messages.BeamRangeproofData)
 def generate_rangeproof(
-    client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y
+    client, cid_idx, cid_type, cid_sub_idx, cid_amount, cid_asset_id, pt0_x, pt0_y, pt1_x, pt1_y, extra_sk0, extra_sk1
 ):
     cid = messages.BeamCoinID(
         idx=int(cid_idx),
@@ -170,7 +170,19 @@ def generate_rangeproof(
     pt0 = messages.BeamECCPoint(x=bytearray.fromhex(pt0_x), y=int(pt0_y))
     pt1 = messages.BeamECCPoint(x=bytearray.fromhex(pt1_x), y=int(pt1_y))
 
-    return client.call(messages.BeamGenerateRangeproof(cid=cid, pt0=pt0, pt1=pt1))
+    if extra_sk0 and extra_sk1:
+        extra_sk0=bytearray.fromhex(extra_sk0)
+        extra_sk1=bytearray.fromhex(extra_sk1)
+
+    return client.call(
+        messages.BeamGenerateRangeproof(cid=cid,
+                                        pt0=pt0,
+                                        pt1=pt1,
+                                        extra_sk0=extra_sk0,
+                                        extra_sk1=extra_sk1,
+        )
+    )
+
 
 @session
 #@expect(messages.BeamSignTransactionSendResult)

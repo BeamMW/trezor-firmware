@@ -216,4 +216,3 @@ if not utils.BITCOIN_ONLY:
     BeamNumSlots = 924  # type: Literal[924]
     BeamGetPKdf = 925  # type: Literal[925]
     BeamPKdf = 926  # type: Literal[926]
-    BeamCreateOutput = 927  # type: Literal[927]

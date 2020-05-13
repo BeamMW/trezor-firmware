@@ -274,5 +274,4 @@ enum MessageType {
     MessageType_BeamNumSlots = 924 [(wire_out) = true];
     MessageType_BeamGetPKdf = 925 [(wire_in) = true];
     MessageType_BeamPKdf = 926 [(wire_out) = true];
-    MessageType_BeamCreateOutput = 927 [(wire_in) = true];
 }
