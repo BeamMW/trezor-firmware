@@ -781,7 +781,8 @@ mod_trezorcrypto_beam_from_mnemonic_beam(const mp_obj_t mnemonic) {
   mp_get_buffer_raise(mnemonic, &mnemo, MP_BUFFER_READ);
   uint8_t seed[32];
   const char* pmnemonic = mnemo.len > 0 ? mnemo.buf : "";
-  phrase_to_seed(pmnemonic, DIGEST_LENGTH, seed);
+  uint32_t mnemonic_size = mnemo.len;
+  phrase_to_seed(pmnemonic, mnemonic_size, seed);
 
   return mp_obj_new_bytes(seed, sizeof(seed));
 }
