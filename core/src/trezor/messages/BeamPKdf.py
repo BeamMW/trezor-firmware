@@ -2,6 +2,8 @@
 # fmt: off
 import protobuf as p
 
+from .BeamECCPoint import BeamECCPoint
+
 if __debug__:
     try:
         from typing import Dict, List  # noqa: F401
@@ -16,11 +18,17 @@ class BeamPKdf(p.MessageType):
     def __init__(
         self,
         key: bytes = None,
+        cofactor_G: BeamECCPoint = None,
+        cofactor_J: BeamECCPoint = None,
     ) -> None:
         self.key = key
+        self.cofactor_G = cofactor_G
+        self.cofactor_J = cofactor_J
 
     @classmethod
     def get_fields(cls) -> Dict:
         return {
             1: ('key', p.BytesType, 0),
+            2: ('cofactor_G', BeamECCPoint, 0),
+            3: ('cofactor_J', BeamECCPoint, 0),
         }

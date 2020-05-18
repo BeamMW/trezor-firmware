@@ -210,6 +210,8 @@ message BeamGetPKdf {
  */
 message BeamPKdf {
     optional bytes key = 1; // public key
+    optional BeamECCPoint cofactor_G = 2; // cofactor G
+    optional BeamECCPoint cofactor_J = 3; // cofactor J
 }
 
 /**

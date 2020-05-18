@@ -1014,15 +1014,30 @@ STATIC mp_obj_t mod_trezorcrypto_beam_export_pkdf(size_t n_args,
   const uint32_t child_idx = mp_obj_get_int(args[1]);
   const uint8_t is_root_key = mp_obj_get_int(args[2]);
 
-  mp_buffer_info_t out_owner_key;
-  mp_get_buffer_raise(args[3], &out_owner_key, MP_BUFFER_RW);
+  mp_buffer_info_t out_secret;
+  mp_get_buffer_raise(args[3], &out_secret, MP_BUFFER_RW);
 
-  get_pkdf((const uint8_t*)seed.buf, child_idx, (bool)is_root_key, (uint8_t*)out_owner_key.buf);
+  mp_buffer_info_t cofactor_G_x;
+  mp_buffer_info_t cofactor_G_y;
+  mp_get_buffer_raise(args[4], &cofactor_G_x, MP_BUFFER_RW);
+  mp_get_buffer_raise(args[5], &cofactor_G_y, MP_BUFFER_RW);
+
+  mp_buffer_info_t cofactor_J_x;
+  mp_buffer_info_t cofactor_J_y;
+  mp_get_buffer_raise(args[6], &cofactor_J_x, MP_BUFFER_RW);
+  mp_get_buffer_raise(args[7], &cofactor_J_y, MP_BUFFER_RW);
+
+  get_pkdf((const uint8_t*)seed.buf,
+           child_idx, (bool)is_root_key,
+           (uint8_t*)out_secret.buf,
+           (uint8_t*)cofactor_G_x.buf, (uint8_t*)cofactor_G_y.buf,
+           (uint8_t*)cofactor_J_x.buf, (uint8_t*)cofactor_J_y.buf);
+
   return mp_const_none;
 }
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
-    mod_trezorcrypto_beam_export_pkdf_obj, 4, 4,
+    mod_trezorcrypto_beam_export_pkdf_obj, 8, 8,
     mod_trezorcrypto_beam_export_pkdf);
 
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_key(size_t n_args,
