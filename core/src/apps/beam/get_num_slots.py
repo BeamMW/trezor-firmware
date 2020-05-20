@@ -1,10 +1,11 @@
 import gc
 
+from trezor import ui
 from trezor.messages.BeamNumSlots import BeamNumSlots
 from trezor.messages.Failure import Failure
 
 from apps.beam.nonce import is_master_nonce_created
-#from apps.beam.layout import beam_confirm_message
+from apps.beam.layout import beam_confirm_message
 
 
 async def get_num_slots(ctx, msg):
@@ -15,15 +16,8 @@ async def get_num_slots(ctx, msg):
 
     num_slots = __get_num_nonce_slots()
     if msg.show_display:
-        from apps.common.confirm import require_confirm
-        from trezor.messages.ButtonRequestType import ProtectCall
-        from trezor import ui
-        from trezor.ui.text import Text
-
-        text = Text("Nonce slots", ui.ICON_SEND, ui.GREEN, new_lines=False)
-        text.normal(ui.GREY, "Number of available nonce slots is:", ui.FG)
-        text.bold(str(num_slots))
-        await require_confirm(ctx, text, ProtectCall)
+        await beam_confirm_message(ctx, "Nonce slots", (ui.GREY, "Number of available nonce slots is:", ui.FG),
+                                   bold_text=str(num_slots), use_split_message=False)
 
     return BeamNumSlots(num_slots=num_slots)
 

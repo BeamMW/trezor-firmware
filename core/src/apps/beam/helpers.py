@@ -1,10 +1,22 @@
 import storage
 
+from apps.common import mnemonic
+
 from trezor import wire
 from trezor.crypto import beam, random
+from trezor.messages.BeamSignature import BeamSignature
+from trezor.messages.BeamECCPoint import BeamECCPoint
 
-from apps.common import mnemonic
 from ubinascii import unhexlify
+
+MESSAGE_TX_SPLIT = const(1)
+MESSAGE_TX_RECEIVE = const(2)
+MESSAGE_TX_SEND = const(3)
+
+STATUS_OK = const(0)
+STATUS_UNSPECIFIED = const(1)
+STATUS_USER_ABORT = const(2)
+STATUS_NOT_IMPL = const(3)
 
 
 def BBS_KEY():
@@ -97,6 +109,24 @@ def rand_pswd(size=8):
     return "".join(charset[random.uniform(len(charset))] for _ in range(size))
 
 
+def get_status_description(status):
+    if status == STATUS_OK:
+        return "Beam: OK"
+    if status == STATUS_UNSPECIFIED:
+        return "Beam: Unspecified error"
+    if status == STATUS_USER_ABORT:
+        return "Beam: UserAbort error"
+    if status == STATUS_NOT_IMPL:
+        return "Beam: NotImpl error"
+
+    return "Beam: UNDEFINED error"
+
+
+def require_ok_status(status):
+    if status != STATUS_OK:
+        raise wire.FirmwareError(get_status_description(status))
+
+
 ###
 ### TRANSACTION MANAGER HELPERS
 ###
@@ -161,7 +191,7 @@ def tm_get_point(transaction_manager, point_type):
     res = transaction_manager.get_point(point_type, point_x, point_y)
 
     if res != 0:
-        print("tm_get_point: wrong point type provided!");
+        print("tm_get_point: wrong point type provided!")
 
     return (point_x, int(point_y[0]))
 
@@ -171,6 +201,64 @@ def tm_get_scalar(transaction_manager, scalar_type):
     res = transaction_manager.get_scalar(scalar_type, scalar_data)
 
     if res != 0:
-        print("tm_get_scalar: wrong scalar type provided!");
+        print("tm_get_scalar: wrong scalar type provided!")
 
     return scalar_data
+
+
+def tm_update_message_common_params(transaction_manager, msg):
+    # Set commitment
+    commitment = tm_get_point(transaction_manager, transaction_manager.TX_COMMON_KERNEL_COMMITMENT)
+    kernel_commitment = BeamECCPoint(x=commitment[0], y=commitment[1])
+    msg.tx_common.kernel_params.commitment = kernel_commitment
+
+    # Set kernel signature
+    kernel_sig_noncepub = tm_get_point(transaction_manager,
+                                       transaction_manager.TX_COMMON_KERNEL_SIGNATURE_NONCEPUB)
+    kernel_sig_sk = tm_get_scalar(transaction_manager,
+                                  transaction_manager.TX_COMMON_KERNEL_SIGNATURE_K)
+    msg.tx_common.kernel_params.signature = BeamSignature(nonce_pub=BeamECCPoint(x=kernel_sig_noncepub[0],
+                                                                                 y=kernel_sig_noncepub[1]),
+                                                          sign_k=kernel_sig_sk)
+
+    # Set offset scalar
+    offset_sk = tm_get_scalar(transaction_manager, transaction_manager.TX_COMMON_OFFSET_SK)
+    msg.tx_common.offset_sk = offset_sk
+
+
+def tm_update_message_mutual_params(transaction_manager, msg):
+    # Set payment proof signature
+    # Set kernel signature
+    payment_proof_sig_noncepub = tm_get_point(transaction_manager,
+                                              transaction_manager.TX_MUTUAL_PAYMENT_PROOF_SIGNATURE_NONCEPUB)
+    payment_proof_sig_sk = tm_get_scalar(transaction_manager,
+                                         transaction_manager.TX_MUTUAL_PAYMENT_PROOF_SIGNATURE_K)
+    msg.tx_mutual_info.payment_proof_signature = BeamSignature(nonce_pub=BeamECCPoint(x=payment_proof_sig_noncepub[0],
+                                                                                      y=payment_proof_sig_noncepub[1]),
+                                                               sign_k=payment_proof_sig_sk)
+
+
+def tm_update_message_sender_params(transaction_manager, msg):
+    # Set user agreement
+    user_agreement = tm_get_scalar(transaction_manager, transaction_manager.TX_SEND_USER_AGREEMENT)
+    msg.user_agreement = user_agreement
+
+
+def tm_update_message(transaction_manager, msg, message_type):
+    if message_type == MESSAGE_TX_SPLIT or message_type == MESSAGE_TX_RECEIVE or message_type == MESSAGE_TX_SEND:
+        tm_update_message_common_params(transaction_manager, msg)
+    if message_type == MESSAGE_TX_RECEIVE or message_type == MESSAGE_TX_SEND:
+        tm_update_message_mutual_params(transaction_manager, msg)
+    if message_type == MESSAGE_TX_SEND:
+        tm_update_message_sender_params(transaction_manager, msg)
+
+
+# Need to be called to ensure no possible sensitive data is left in the memory
+def tm_finish(transaction_manager):
+    transaction_manager.clear_state()
+
+
+def tm_check_status(transaction_manager, status):
+    if status != STATUS_OK:
+        tm_finish(transaction_manager)
+        raise wire.FirmwareError(get_status_description(status))

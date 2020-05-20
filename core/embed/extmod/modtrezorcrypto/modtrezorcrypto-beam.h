@@ -77,6 +77,7 @@ enum TRANSACTION_MANAGER_SCALAR_TYPE {
   TX_COMMON_OFFSET_SK,
   TX_MUTUAL_PAYMENT_PROOF_SIGNATURE_K,
   TX_SEND_USER_AGREEMENT,
+  TX_STATE_KERNEL_MSG // temporary state msg
 };
 
 typedef struct _mp_obj_coin_id_t {
@@ -84,6 +85,28 @@ typedef struct _mp_obj_coin_id_t {
   BeamCrypto_CoinID cid;
 } mp_obj_coin_id_t;
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_coin_id_type;
+
+typedef struct {
+  TxAggr tx_aggr;
+  BeamCrypto_UintBig kernel_msg;
+  BeamCrypto_UintBig wallet_id_msg;
+  secp256k1_scalar sk_krn;
+  secp256k1_scalar sk_nonce;
+} _beam_transaction_manager_state;
+
+void _beam_transaction_manager_clear_state(_beam_transaction_manager_state* state) {
+  state->tx_aggr.m_Ins.m_Beams = 0;
+  state->tx_aggr.m_Ins.m_Assets = 0;
+  state->tx_aggr.m_Outs.m_Beams = 0;
+  state->tx_aggr.m_Outs.m_Assets = 0;
+  state->tx_aggr.m_AssetID = 0;
+  secp256k1_scalar_clear(&state->tx_aggr.m_sk);
+
+  memzero(state->kernel_msg.m_pVal, DIGEST_LENGTH);
+  memzero(state->wallet_id_msg.m_pVal, DIGEST_LENGTH);
+  secp256k1_scalar_clear(&state->sk_krn);
+  secp256k1_scalar_clear(&state->sk_nonce);
+}
 
 typedef struct _mp_obj_beam_transaction_manager_t {
   mp_obj_base_t base;
@@ -96,6 +119,8 @@ typedef struct _mp_obj_beam_transaction_manager_t {
   BeamCrypto_TxCommon tx_common;
   BeamCrypto_TxMutualInfo tx_mutual_info;
   BeamCrypto_TxSenderParams tx_sender_params;
+
+  _beam_transaction_manager_state tx_state;
 } mp_obj_beam_transaction_manager_t;
 STATIC const mp_obj_type_t mod_trezorcrypto_beam_transaction_manager_type;
 
@@ -112,6 +137,8 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_make_new(
 
   // Set invalid nonce slot at initialization, so transaction sign won't occur
   o->tx_sender_params.m_iSlot = MASTER_NONCE_SLOT;
+
+  _beam_transaction_manager_clear_state(&o->tx_state);
 
   return MP_OBJ_FROM_PTR(o);
 }
@@ -133,6 +160,17 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager___del__(mp_obj_t self)
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(
     mod_trezorcrypto_beam_transaction_manager___del___obj,
     mod_trezorcrypto_beam_transaction_manager___del__);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_clear_state(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+  _beam_transaction_manager_clear_state(&o->tx_state);
+
+  return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_clear_state_obj,
+    mod_trezorcrypto_beam_transaction_manager_clear_state);
 
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_add_input(
     mp_obj_t self, const mp_obj_t cid_input) {
@@ -298,7 +336,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_transaction_manager_set_sender_params_obj, 3, 3,
     mod_trezorcrypto_beam_transaction_manager_set_sender_params);
 
-STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send(
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_1(
     mp_obj_t self, const mp_obj_t send_phase_arg) {
   mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
 
@@ -306,35 +344,136 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send(
   // TODO
   UNUSED(send_phase);
 
-  const int res = BeamCrypto_KeyKeeper_SignTx_Send(&o->key_keeper,
-                                                   &o->tx_common, &o->tx_mutual_info, &o->tx_sender_params);
+  const int res = BeamCrypto_KeyKeeper_SignTx_Send_Part_1(&o->key_keeper,
+                                                          &o->tx_common,
+                                                          &o->tx_mutual_info,
+                                                          &o->tx_sender_params,
+                                                          &o->tx_state.tx_aggr);
   return mp_obj_new_int(res);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(
-    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_obj,
-    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send);
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_1_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_1);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_2(
+    mp_obj_t self, const mp_obj_t arg_nonce_from_slot) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  mp_buffer_info_t nonce_from_slot;
+  mp_get_buffer_raise(arg_nonce_from_slot, &nonce_from_slot, MP_BUFFER_READ);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Send_Part_2(&o->key_keeper,
+                                                          &o->tx_common,
+                                                          &o->tx_mutual_info,
+                                                          &o->tx_state.tx_aggr,
+                                                          (const uint8_t*)nonce_from_slot.buf,
+                                                          &o->tx_state.wallet_id_msg,
+                                                          &o->tx_state.kernel_msg,
+                                                          &o->tx_state.sk_krn,
+                                                          &o->tx_state.sk_nonce);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_2_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_2);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_3(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Send_Part_3(&o->tx_state.tx_aggr,
+                                                          &o->tx_common,
+                                                          &o->tx_mutual_info,
+                                                          &o->tx_sender_params,
+                                                          &o->tx_state.wallet_id_msg,
+                                                          &o->tx_state.kernel_msg,
+                                                          &o->tx_state.sk_krn,
+                                                          &o->tx_state.sk_nonce);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_3_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_3);
+
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_4(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Send_Part_4(&o->tx_state.tx_aggr,
+                                                          &o->tx_common,
+                                                          &o->tx_state.kernel_msg,
+                                                          &o->tx_state.sk_krn,
+                                                          &o->tx_state.sk_nonce);
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_4_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_4);
 
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive(
     mp_obj_t self) {
   mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
 
-  const int res = BeamCrypto_KeyKeeper_SignTx_Receive(&o->key_keeper, &o->tx_common, &o->tx_mutual_info);
+  const int res = BeamCrypto_KeyKeeper_SignTx_Receive(&o->key_keeper,
+                                                      &o->tx_state.tx_aggr,
+                                                      &o->tx_common,
+                                                      &o->tx_mutual_info);
   return mp_obj_new_int(res);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(
     mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive_obj,
     mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive);
 
-STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_split(
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_1(
     mp_obj_t self) {
   mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
 
-  const int res = BeamCrypto_KeyKeeper_SignTx_Split(&o->key_keeper, &o->tx_common);
+  const int res = BeamCrypto_KeyKeeper_SignTx_Split_Part_1(&o->key_keeper,
+                                                           &o->tx_common,
+                                                           &o->tx_state.tx_aggr,
+                                                           &o->tx_state.kernel_msg,
+                                                           &o->tx_state.sk_krn,
+                                                           &o->tx_state.sk_nonce);
+
   return mp_obj_new_int(res);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(
-    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_obj,
-    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split);
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_1_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_1);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_2(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  const int res = BeamCrypto_KeyKeeper_SignTx_Split_Part_2(&o->tx_common,
+                                                           &o->tx_state.tx_aggr,
+                                                           &o->tx_state.kernel_msg,
+                                                           &o->tx_state.sk_krn,
+                                                           &o->tx_state.sk_nonce);
+
+  return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_2_obj,
+    mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_2);
+
+STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_get_tx_aggr_coins_info(
+    mp_obj_t self) {
+  mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(self);
+
+  mp_obj_t tuple[5] = {
+    mp_obj_new_int_from_ull(o->tx_state.tx_aggr.m_Ins.m_Beams),
+    mp_obj_new_int_from_ull(o->tx_state.tx_aggr.m_Ins.m_Assets),
+    mp_obj_new_int_from_ull(o->tx_state.tx_aggr.m_Outs.m_Beams),
+    mp_obj_new_int_from_ull(o->tx_state.tx_aggr.m_Outs.m_Assets),
+    mp_obj_new_int(o->tx_state.tx_aggr.m_AssetID),
+  };
+  return mp_obj_new_tuple(5, tuple);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(
+    mod_trezorcrypto_beam_transaction_manager_get_tx_aggr_coins_info_obj,
+    mod_trezorcrypto_beam_transaction_manager_get_tx_aggr_coins_info);
 
 STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_get_point(
     size_t n_args, const mp_obj_t* args) {
@@ -400,6 +539,10 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_get_scalar(
 
     case TX_SEND_USER_AGREEMENT:
       memcpy((uint8_t*)scalar_data.buf, o->tx_sender_params.m_UserAgreement.m_pVal, DIGEST_LENGTH);
+      break;
+
+    case TX_STATE_KERNEL_MSG:
+      memcpy((uint8_t*)scalar_data.buf, o->tx_state.kernel_msg.m_pVal, DIGEST_LENGTH);
       break;
 
     default:
@@ -1286,6 +1429,8 @@ STATIC const mp_rom_map_elem_t
     mod_trezorcrypto_beam_transaction_manager_locals_dict_table[] = {
         {MP_ROM_QSTR(MP_QSTR___del__),
          MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager___del___obj)},
+        {MP_ROM_QSTR(MP_QSTR_clear_state),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_clear_state_obj)},
         {MP_ROM_QSTR(MP_QSTR_add_input),
          MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_add_input_obj)},
         {MP_ROM_QSTR(MP_QSTR_add_output),
@@ -1298,12 +1443,22 @@ STATIC const mp_rom_map_elem_t
          MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_set_mutual_info_obj)},
         {MP_ROM_QSTR(MP_QSTR_set_sender_params),
          MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_set_sender_params_obj)},
-        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send),
-         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send_part_1),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_1_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send_part_2),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_2_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send_part_3),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_3_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_send_part_4),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_send_part_4_obj)},
         {MP_ROM_QSTR(MP_QSTR_sign_transaction_receive),
          MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_receive_obj)},
-        {MP_ROM_QSTR(MP_QSTR_sign_transaction_split),
-         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_split_part_1),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_1_obj)},
+        {MP_ROM_QSTR(MP_QSTR_sign_transaction_split_part_2),
+         MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_sign_transaction_split_part_2_obj)},
+        // Getters
+        {MP_ROM_QSTR(MP_QSTR_get_tx_aggr_coins_info), MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_get_tx_aggr_coins_info_obj)},
         {MP_ROM_QSTR(MP_QSTR_get_point), MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_get_point_obj)},
         {MP_ROM_QSTR(MP_QSTR_get_scalar), MP_ROM_PTR(&mod_trezorcrypto_beam_transaction_manager_get_scalar_obj)},
          // Point getter types
@@ -1315,6 +1470,7 @@ STATIC const mp_rom_map_elem_t
         {MP_ROM_QSTR(MP_QSTR_TX_COMMON_OFFSET_SK), MP_ROM_INT(TX_COMMON_OFFSET_SK)},
         {MP_ROM_QSTR(MP_QSTR_TX_MUTUAL_PAYMENT_PROOF_SIGNATURE_K), MP_ROM_INT(TX_MUTUAL_PAYMENT_PROOF_SIGNATURE_K)},
         {MP_ROM_QSTR(MP_QSTR_TX_SEND_USER_AGREEMENT), MP_ROM_INT(TX_SEND_USER_AGREEMENT)},
+        {MP_ROM_QSTR(MP_QSTR_TX_STATE_KERNEL_MSG), MP_ROM_INT(TX_STATE_KERNEL_MSG)},
 };
 STATIC MP_DEFINE_CONST_DICT(
     mod_trezorcrypto_beam_transaction_manager_locals_dict,

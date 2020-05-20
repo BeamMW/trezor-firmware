@@ -198,7 +198,7 @@ def sign_tx_send(
             tx_common=tx_common,
             tx_mutual_info=tx_mutual_info,
             nonce_slot=nonce_slot,
-            user_agreement=bytearray(user_agreement, "utf-8"),
+            user_agreement=hex_str_to_bytearray(user_agreement),
         )
     )
     return response
@@ -246,7 +246,7 @@ def sign_tx(
         messages.BeamSignTransaction(
             inputs=inputs,
             outputs=outputs,
-            offset_sk=bytearray(offset_sk, "utf-8"),
+            offset_sk=hex_str_to_bytearray(offset_sk),
             nonce_slot=int(nonce_slot),
             kernel_params=kernel_params,
         )
@@ -336,7 +336,7 @@ def create_coin_id(cid) -> messages.BeamCoinID:
 def create_point(point) -> messages.BeamECCPoint:
     _check_required_fields(point, REQUIRED_FIELDS_ECC_POINT, "ECC Point")
 
-    return messages.BeamECCPoint(x=bytearray(point["x"], "utf-8"), y=bool(point["y"]))
+    return messages.BeamECCPoint(x=hex_str_to_bytearray(point["x"]), y=bool(point["y"]))
 
 
 def create_signature(signature) -> messages.BeamSignature:
@@ -344,7 +344,7 @@ def create_signature(signature) -> messages.BeamSignature:
 
     return messages.BeamSignature(
         nonce_pub=create_point(signature["nonce_pub"]),
-        sign_k=bytearray(signature["k"], "utf-8"),
+        sign_k=hex_str_to_bytearray(signature["k"]),
     )
 
 
@@ -373,7 +373,7 @@ def create_tx_common(params) -> messages.BeamTxCommon:
 
     return messages.BeamTxCommon(
         inputs=inputs,
-        offset_sk=bytearray(params["offset_sk"], "utf-8"),
+        offset_sk=hex_str_to_bytearray(params["offset_sk"]),
         outputs=outputs,
         kernel_params=create_kernel_params(params["kernel_parameters"])
     )
@@ -383,7 +383,7 @@ def create_tx_mutual_info(params) -> messages.BeamTxMutualInfo:
     _check_required_fields(params, REQUIRED_FIELDS_TX_MUTUAL_INFO, "TxMutualInfo")
 
     return messages.BeamTxMutualInfo(
-        peer=bytearray(params["peer"], "utf-8"),
+        peer=hex_str_to_bytearray(params["peer"]),
         wallet_identity_key=int(params["wallet_identity_key"]),
         payment_proof_signature=create_signature(params["payment_proof_signature"]),
     )

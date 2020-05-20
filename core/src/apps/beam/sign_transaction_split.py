@@ -9,12 +9,14 @@ from trezor.messages.BeamSignTransactionSplitResult import BeamSignTransactionSp
 from trezor.messages.BeamSignature import BeamSignature
 from trezor.messages.BeamECCPoint import BeamECCPoint
 
-#from apps.beam.layout import beam_confirm_message
-#from apps.beam.nonce import consume_nonce
+from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, require_confirm_transfer
 
 
 async def sign_transaction_split(ctx, msg):
     gc.collect()
+
+    # Confirm inputs/outputs
+    await require_confirm_transfer(ctx, msg.tx_common)
 
     mnemonic = storage.device.get_mnemonic_secret()
     seed = beam.from_mnemonic_beam(mnemonic)
@@ -23,23 +25,18 @@ async def sign_transaction_split(ctx, msg):
     transaction_manager.init_keykeeper(seed)
     helpers.tm_sign_transaction_set_common_info(transaction_manager, msg)
 
-    transaction_manager.sign_transaction_split()
+    res = transaction_manager.sign_transaction_split_part_1()
+    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT)
+    helpers.tm_check_status(transaction_manager, res)
 
-    # Set commitment
-    commitment = helpers.tm_get_point(transaction_manager, transaction_manager.TX_COMMON_KERNEL_COMMITMENT)
-    kernel_commitment = BeamECCPoint(x=commitment[0], y=commitment[1])
-    msg.tx_common.kernel_params.commitment = kernel_commitment
-    # Set kernel signature
-    kernel_sig_noncepub = helpers.tm_get_point(transaction_manager,
-                                               transaction_manager.TX_COMMON_KERNEL_SIGNATURE_NONCEPUB)
-    kernel_sig_sk = helpers.tm_get_scalar(transaction_manager,
-                                          transaction_manager.TX_COMMON_KERNEL_SIGNATURE_K)
-    msg.tx_common.kernel_params.signature = BeamSignature(nonce_pub=BeamECCPoint(x=kernel_sig_noncepub[0],
-                                                                                 y=kernel_sig_noncepub[1]),
-                                                          sign_k=kernel_sig_sk)
-    # Set offset scalar
-    offset_sk = helpers.tm_get_scalar(transaction_manager, transaction_manager.TX_COMMON_OFFSET_SK)
-    msg.tx_common.offset_sk = offset_sk
+    kernel_msg = helpers.tm_get_scalar(transaction_manager,
+                                        transaction_manager.TX_STATE_KERNEL_MSG)
+    await beam_confirm_message(ctx, "Kernel msg: ", kernel_msg, use_split_message=True)
+    await beam_ui_display_kernel_info(ctx, "Confirm split tx", msg.tx_common.kernel_params)
+
+    res = transaction_manager.sign_transaction_split_part_2()
+    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT)
+    helpers.tm_check_status(transaction_manager, res)
 
     return msg
 
