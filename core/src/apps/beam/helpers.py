@@ -17,6 +17,14 @@ STATUS_OK = const(0)
 STATUS_UNSPECIFIED = const(1)
 STATUS_USER_ABORT = const(2)
 STATUS_NOT_IMPL = const(3)
+# TODO(Kirill) These are temporary statuses. Need to review and refactor their usage and naming
+STATUS_TXAGGR_NULL = const(4)
+STATUS_TXAGGR_FAILED = const(5)
+STATUS_TXAGGR_INVALID = const(6)
+STATUS_WRONG_KERNEL_KEYS = const(7)
+STATUS_WRONG_SLOT = const(8)
+STATUS_WRONG_USERAGREEMENT_TOKEN = const(9)
+STATUS_WRONG_PAYMENTPROOF_SIGNATURE = const(10)
 
 
 def BBS_KEY():
@@ -118,6 +126,20 @@ def get_status_description(status):
         return "Beam: UserAbort error"
     if status == STATUS_NOT_IMPL:
         return "Beam: NotImpl error"
+    if status == STATUS_TXAGGR_NULL:
+        return "Beam: TxAggr null pointer"
+    if status == STATUS_TXAGGR_FAILED:
+        return "Beam: TxAggr calculation failed"
+    if status == STATUS_TXAGGR_INVALID:
+        return "Beam: TxAggr is invalid"
+    if status == STATUS_WRONG_KERNEL_KEYS:
+        return "Beam: Kernel: keys update failed. Kernel commitment or signature is wrong"
+    if status == STATUS_WRONG_SLOT:
+        return "Beam: incorrect slot num is provided"
+    if status == STATUS_WRONG_USERAGREEMENT_TOKEN:
+        return "Beam: incorrect user agreement token is provided"
+    if status == STATUS_WRONG_PAYMENTPROOF_SIGNATURE:
+        return "Beam: incorrect payment proof signature is provided"
 
     return "Beam: UNDEFINED error"
 
