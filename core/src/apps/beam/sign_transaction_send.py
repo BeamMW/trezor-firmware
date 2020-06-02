@@ -12,8 +12,7 @@ from trezor.messages.BeamSignature import BeamSignature
 from trezor.messages.BeamECCPoint import BeamECCPoint
 
 from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, require_confirm_transfer, require_confirm_tx_aggr
-from apps.beam.nonce import consume_nonce
-
+from apps.beam.nonce import consume_nonce, spot_nonce
 
 async def sign_transaction_send(ctx, msg):
     gc.collect()
@@ -38,7 +37,9 @@ async def sign_transaction_send(ctx, msg):
     helpers.tm_check_status(transaction_manager, res)
 
     # Part 2
-    nonce_from_slot = consume_nonce(msg.nonce_slot)
+    ## TODO: find better solution to reuse the nonce slot
+    fresh_request = not bool(sum(msg.user_agreement))
+    nonce_from_slot = spot_nonce(msg.nonce_slot) if fresh_request else consume_nonce(msg.nonce_slot)
     res = transaction_manager.sign_transaction_send_part_2(nonce_from_slot)
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND)
     helpers.tm_check_status(transaction_manager, res)

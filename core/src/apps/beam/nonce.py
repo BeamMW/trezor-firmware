@@ -40,6 +40,10 @@ def consume_nonce(idx):
     old_nonce, _ = create_nonce(idx)
     return old_nonce
 
+def spot_nonce(idx):
+    if idx != get_master_nonce_idx():
+        nonce = config.get(beam_app_id(), idx)
+        return nonce
 
 def get_nonce_pub(idx):
     if idx != get_master_nonce_idx():
