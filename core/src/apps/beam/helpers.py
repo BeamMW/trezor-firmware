@@ -35,10 +35,6 @@ def beam_app_id():
     return 19
 
 
-def get_master_nonce_idx():
-    return 0
-
-
 def bin_to_str(binary_data):
     return "".join("{:02x}".format(x) for x in binary_data)
 
@@ -201,7 +197,7 @@ def tm_sign_transaction_set_mutual_info(transaction_manager, msg):
 
 
 def tm_sign_transaction_set_sender_params(transaction_manager, msg):
-    transaction_manager.set_sender_params(
+    return transaction_manager.set_sender_params(
         msg.nonce_slot,
         msg.user_agreement,
     )

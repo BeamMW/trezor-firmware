@@ -136,7 +136,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_make_new(
   vec_init(&o->outputs);
 
   // Set invalid nonce slot at initialization, so transaction sign won't occur
-  o->tx_sender_params.m_iSlot = MASTER_NONCE_SLOT;
+  o->tx_sender_params.m_iSlot = MAX_NONCE_SLOT + 1;
 
   _beam_transaction_manager_clear_state(&o->tx_state);
 
@@ -665,7 +665,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_maker_make_new(
   vec_init(&o->outputs);
 
   // Set invalid nonce slot at initialization, so transaction sign won't occur
-  o->tx_data.nonce_slot = MASTER_NONCE_SLOT;
+  o->tx_data.nonce_slot = MAX_NONCE_SLOT + 1;
 
   return MP_OBJ_FROM_PTR(o);
 }

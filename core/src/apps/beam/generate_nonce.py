@@ -3,15 +3,14 @@ import gc
 from trezor.messages.BeamECCPoint import BeamECCPoint
 from trezor.messages.Failure import Failure
 
-from apps.beam.helpers import get_master_nonce_idx
-from apps.beam.nonce import calc_nonce_pub, create_nonce, is_master_nonce_created
+from apps.beam.nonce import get_nonce_pub, is_master_nonce_created, is_valid_nonce_slot
 
-
+# DEPRECATED
 async def generate_nonce(ctx, msg):
     gc.collect()
 
     idx = msg.slot
-    if idx == get_master_nonce_idx() or idx > 255:
+    if not is_valid_nonce_slot(idx):
         return Failure(message="Incorrect slot provided")
 
     if not is_master_nonce_created():
