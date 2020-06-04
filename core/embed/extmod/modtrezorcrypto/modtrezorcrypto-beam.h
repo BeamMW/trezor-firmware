@@ -571,10 +571,10 @@ STATIC mp_obj_t mod_trezorcrypto_beam_coin_id_set(size_t n_args, const mp_obj_t*
   mp_obj_coin_id_t* o = MP_OBJ_TO_PTR(args[0]);
 
   const uint64_t idx = mp_obj_get_uint64_beam(args[1]);
-  const uint32_t type = mp_obj_get_int(args[2]);
-  const uint32_t sub_idx = mp_obj_get_int(args[3]);
+  const uint32_t type = (uint32_t)mp_obj_get_uint64_beam(args[2]);
+  const uint32_t sub_idx = (uint32_t)mp_obj_get_uint64_beam(args[3]);
   const uint64_t amount = mp_obj_get_uint64_beam(args[4]);
-  const uint32_t asset_id = mp_obj_get_int(args[5]);
+  const uint32_t asset_id = (uint32_t)mp_obj_get_uint64_beam(args[5]);
 
   o->cid.m_Idx = idx;
   o->cid.m_Type = type;
@@ -1154,7 +1154,7 @@ STATIC mp_obj_t mod_trezorcrypto_beam_export_pkdf(size_t n_args,
   mp_buffer_info_t seed;
   mp_get_buffer_raise(args[0], &seed, MP_BUFFER_READ);
 
-  const uint32_t child_idx = mp_obj_get_int(args[1]);
+  const uint32_t child_idx = (uint32_t)mp_obj_get_uint64_beam(args[1]);
   const uint8_t is_root_key = mp_obj_get_int(args[2]);
 
   mp_buffer_info_t out_secret;
