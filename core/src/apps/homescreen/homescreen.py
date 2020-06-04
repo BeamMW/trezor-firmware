@@ -19,11 +19,11 @@ class Homescreen(ui.Layout):
         if not storage.is_initialized():
             label = "Go to trezor.io/start"
         else:
-            label = storage.device.get_label() or "My Trezor"
+            label = storage.device.get_label() or "My Trezor (BEAM)"
             image = storage.device.get_homescreen()
 
         if not image:
-            image = res.load("apps/homescreen/res/bg.toif")
+            image = res.load("apps/homescreen/res/beam_logo.toif")
 
         if storage.is_initialized() and storage.device.no_backup():
             ui.header_error("SEEDLESS")

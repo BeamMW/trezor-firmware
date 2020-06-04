@@ -44,9 +44,9 @@ async def lockscreen() -> None:
     label = storage.device.get_label()
     image = storage.device.get_homescreen()
     if not label:
-        label = "My Trezor"
+        label = "My Trezor (BEAM)"
     if not image:
-        image = res.load("apps/homescreen/res/bg.toif")
+        image = res.load("apps/homescreen/res/beam_logo.toif")
 
     ui.backlight_fade(ui.BACKLIGHT_DIM)
 
