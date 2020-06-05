@@ -60,7 +60,7 @@ async def sign_transaction_send(ctx, msg):
 
     # Part 4
     res = transaction_manager.sign_transaction_send_part_4()
-    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND)
+    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
 
 

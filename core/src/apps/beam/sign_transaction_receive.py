@@ -29,7 +29,7 @@ async def sign_transaction_receive(ctx, msg):
 
     res = transaction_manager.sign_transaction_receive()
 
-    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_RECEIVE)
+    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_RECEIVE, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
 
     return msg

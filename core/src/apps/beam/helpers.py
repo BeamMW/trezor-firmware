@@ -228,7 +228,7 @@ def tm_get_scalar(transaction_manager, scalar_type):
     return scalar_data
 
 
-def tm_update_message_common_params(transaction_manager, msg):
+def tm_update_message_common_params(transaction_manager, msg, before_response):
     # Set commitment
     commitment = tm_get_point(transaction_manager, transaction_manager.TX_COMMON_KERNEL_COMMITMENT)
     kernel_commitment = BeamECCPoint(x=commitment[0], y=commitment[1])
@@ -247,8 +247,17 @@ def tm_update_message_common_params(transaction_manager, msg):
     offset_sk = tm_get_scalar(transaction_manager, transaction_manager.TX_COMMON_OFFSET_SK)
     msg.tx_common.offset_sk = offset_sk
 
+    if before_response:
+        # Need to clean input and output CoinIDs and kernel fee, heights
+        # as there is a limitation of writing uint64 to protobuf message
+        msg.tx_common.inputs = []
+        msg.tx_common.outputs = []
+        msg.tx_common.kernel_params.fee = None
+        msg.tx_common.kernel_params.min_height = None
+        msg.tx_common.kernel_params.max_height = None
 
-def tm_update_message_mutual_params(transaction_manager, msg):
+
+def tm_update_message_mutual_params(transaction_manager, msg, before_response):
     # Set payment proof signature
     # Set kernel signature
     payment_proof_sig_noncepub = tm_get_point(transaction_manager,
@@ -259,6 +268,10 @@ def tm_update_message_mutual_params(transaction_manager, msg):
                                                                                       y=payment_proof_sig_noncepub[1]),
                                                                sign_k=payment_proof_sig_sk)
 
+    if before_response:
+        # Need to clean wallet identity as there is a limitation of writing uint64 to protobuf message
+        msg.tx_mutual_info.wallet_identity_key = None
+
 
 def tm_update_message_sender_params(transaction_manager, msg):
     # Set user agreement
@@ -266,11 +279,11 @@ def tm_update_message_sender_params(transaction_manager, msg):
     msg.user_agreement = user_agreement
 
 
-def tm_update_message(transaction_manager, msg, message_type):
+def tm_update_message(transaction_manager, msg, message_type, before_response=False):
     if message_type == MESSAGE_TX_SPLIT or message_type == MESSAGE_TX_RECEIVE or message_type == MESSAGE_TX_SEND:
-        tm_update_message_common_params(transaction_manager, msg)
+        tm_update_message_common_params(transaction_manager, msg, before_response)
     if message_type == MESSAGE_TX_RECEIVE or message_type == MESSAGE_TX_SEND:
-        tm_update_message_mutual_params(transaction_manager, msg)
+        tm_update_message_mutual_params(transaction_manager, msg, before_response)
     if message_type == MESSAGE_TX_SEND:
         tm_update_message_sender_params(transaction_manager, msg)
 

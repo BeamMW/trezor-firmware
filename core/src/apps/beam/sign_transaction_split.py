@@ -35,7 +35,7 @@ async def sign_transaction_split(ctx, msg):
     await beam_ui_display_kernel_info(ctx, "Confirm split tx", msg.tx_common.kernel_params)
 
     res = transaction_manager.sign_transaction_split_part_2()
-    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT)
+    helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
 
     return msg
