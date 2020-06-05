@@ -7,14 +7,16 @@ from apps.beam.helpers import beam_app_id
 def get_master_nonce_idx():
     return 0
 
+
 def get_num_nonce_slots():
     return 32
+
 
 def create_master_nonce(seed):
     master_nonce = bytearray(32)
     beam.create_master_nonce(master_nonce, seed)
     config.set(beam_app_id(), get_master_nonce_idx(), master_nonce)
-    for idx in range(1, 255):
+    for idx in range(1, __get_nonce_idx(get_num_nonce_slots())):
         create_nonce(idx)
 
 
@@ -23,12 +25,13 @@ def is_master_nonce_created():
     return master_nonce is not None
 
 
-def correct_idx(idx):
+def __get_nonce_idx(idx):
+    # each passed idx need to have offset 1 as 0 is a master nonce idx
     return idx + 1
 
 
 def is_valid_nonce_slot(idx):
-    return idx != get_master_nonce_idx() and idx < correct_idx(get_num_nonce_slots())
+    return idx != get_master_nonce_idx() and idx < __get_nonce_idx(get_num_nonce_slots())
 
 
 def create_nonce(idx):
@@ -52,13 +55,13 @@ def calc_nonce_pub(nonce):
 
 
 def consume_nonce(idx):
-    idx = correct_idx(idx)
+    idx = __get_nonce_idx(idx)
     old_nonce, _ = create_nonce(idx)
     return old_nonce
 
 
 def spot_nonce(idx):
-    idx = correct_idx(idx)
+    idx = __get_nonce_idx(idx)
     if is_valid_nonce_slot(idx):
         nonce = config.get(beam_app_id(), idx)
         return nonce
@@ -66,7 +69,7 @@ def spot_nonce(idx):
 
 
 def get_nonce_pub(idx):
-    idx = correct_idx(idx)
+    idx = __get_nonce_idx(idx)
     if is_valid_nonce_slot(idx):
         nonce = config.get(beam_app_id(), idx)
         return calc_nonce_pub(nonce)
