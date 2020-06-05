@@ -57,12 +57,11 @@ async def beam_confirm_tx(ctx, spending, fee):
 
 
 async def beam_ui_display_kernel_info(ctx, header, kernel):
-    page1 = Text(header + " 1/4", ui.ICON_SEND, icon_color=ui.GREEN, new_lines=False)
-    page1.normal(ui.GREY, " Fee: ", ui.FG)
+    page1 = Text(header + " 1/4", ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
+    page1.normal(ui.GREY, "Fee: ", ui.FG)
     page1.bold(str(kernel.fee))
-    page1.normal("                 ")
-    page1.normal(ui.GREY, " Height: ", ui.FG)
-    page1.bold("{", str(kernel.min_height), "; ", str(kernel.max_height), "}")
+    page1.normal(ui.GREY, "Height: ", ui.FG)
+    page1.bold("{ " + str(kernel.min_height) + "; " + str(kernel.max_height) + " }")
 
     page2 = Text(header + " 2/4", ui.ICON_SEND, icon_color=ui.GREEN, new_lines=False)
     page2.normal(ui.GREY, "Commitment x: ", ui.FG)
