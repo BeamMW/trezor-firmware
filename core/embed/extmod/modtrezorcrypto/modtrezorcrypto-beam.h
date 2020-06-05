@@ -320,7 +320,8 @@ STATIC mp_obj_t mod_trezorcrypto_beam_transaction_manager_set_sender_params(
   mp_obj_beam_transaction_manager_t* o = MP_OBJ_TO_PTR(args[0]);
 
   const uint32_t nonce_slot = mp_obj_get_int(args[1]);
-  if (!is_valid_nonce_slot(nonce_slot)) return mp_obj_new_int(0);
+  if (!is_valid_nonce_slot(nonce_slot))
+      return mp_obj_new_int(0);
 
   o->tx_sender_params.m_iSlot = nonce_slot;
 

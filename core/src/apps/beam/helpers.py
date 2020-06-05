@@ -142,7 +142,7 @@ def get_status_description(status):
 
 def require_ok_status(status):
     if status != STATUS_OK:
-        raise wire.FirmwareError(get_status_description(status))
+        raise wire.ProcessError(get_status_description(status))
 
 
 ###
@@ -197,10 +197,10 @@ def tm_sign_transaction_set_mutual_info(transaction_manager, msg):
 
 
 def tm_sign_transaction_set_sender_params(transaction_manager, msg):
-    return transaction_manager.set_sender_params(
+    return bool(transaction_manager.set_sender_params(
         msg.nonce_slot,
         msg.user_agreement,
-    )
+    ))
 
 
 def tm_get_point(transaction_manager, point_type):
@@ -292,4 +292,4 @@ def tm_finish(transaction_manager):
 def tm_check_status(transaction_manager, status):
     if status != STATUS_OK:
         tm_finish(transaction_manager)
-        raise wire.FirmwareError(get_status_description(status))
+        raise wire.ProcessError(get_status_description(status))

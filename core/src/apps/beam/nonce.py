@@ -60,7 +60,7 @@ def consume_nonce(idx):
     return old_nonce
 
 
-def spot_nonce(idx):
+def get_nonce(idx):
     idx = __get_nonce_idx(idx)
     if is_valid_nonce_slot(idx):
         nonce = config.get(beam_app_id(), idx)

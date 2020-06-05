@@ -10,10 +10,9 @@ from trezor.messages.BeamSignTransactionSend import BeamSignTransactionSend
 from trezor.messages.BeamSignTransactionSendResult import BeamSignTransactionSendResult
 from trezor.messages.BeamSignature import BeamSignature
 from trezor.messages.BeamECCPoint import BeamECCPoint
-from trezor.messages.Failure import Failure
 
 from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, require_confirm_transfer, require_confirm_tx_aggr
-from apps.beam.nonce import consume_nonce, spot_nonce
+from apps.beam.nonce import consume_nonce, get_nonce
 
 async def sign_transaction_send(ctx, msg):
     gc.collect()
@@ -28,9 +27,9 @@ async def sign_transaction_send(ctx, msg):
     transaction_manager.init_keykeeper(seed)
     helpers.tm_sign_transaction_set_common_info(transaction_manager, msg)
     helpers.tm_sign_transaction_set_mutual_info(transaction_manager, msg)
-    accepted = helpers.tm_sign_transaction_set_sender_params(transaction_manager, msg)
-    if accepted is not 1:
-        return Failure(message="Parameters is not accepted")
+    parameters_accepted = helpers.tm_sign_transaction_set_sender_params(transaction_manager, msg)
+    if not parameters_accepted:
+        raise wire.DataError("Sender parameters are invalid")
 
     # Part 1
     ## TODO: do we need to pass that send_phase at all?
@@ -42,9 +41,9 @@ async def sign_transaction_send(ctx, msg):
     # Part 2
     ## TODO: find better solution to reuse the nonce slot
     fresh_request = not bool(sum(msg.user_agreement))
-    nonce_from_slot = spot_nonce(msg.nonce_slot) if fresh_request else consume_nonce(msg.nonce_slot)
+    nonce_from_slot = get_nonce(msg.nonce_slot) if fresh_request else consume_nonce(msg.nonce_slot)
     if nonce_from_slot is None:
-        return Failure(message="Invalid nonce slot provided")
+        raise wire.DataError("Invalid nonce slot is provided")
 
     res = transaction_manager.sign_transaction_send_part_2(nonce_from_slot)
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND)
@@ -68,7 +67,6 @@ async def sign_transaction_send(ctx, msg):
     res = transaction_manager.sign_transaction_send_part_4()
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
-
 
     return msg
 
