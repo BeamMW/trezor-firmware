@@ -1,4 +1,4 @@
-from trezor import ui
+from trezor import ui, utils
 
 from trezor.messages import ButtonRequestType
 from trezor.messages.BeamCoinID import BeamCoinID
@@ -13,6 +13,10 @@ import apps.common.coins as coins
 from apps.common.confirm import require_confirm, hold_to_confirm
 from apps.common.signverify import split_message
 from apps.wallet.sign_tx.layout import confirm_total
+
+
+def format_amount(value):
+    return "%s BEAM" % utils.format_amount(value, 9)
 
 
 async def require_confirm_sign_message(ctx, message, use_split_message=True):
@@ -82,30 +86,30 @@ async def beam_ui_display_kernel_info(ctx, header, kernel):
 async def require_confirm_transfer(ctx, msg: BeamTxCommon):
     def make_input_output_page(coin: BeamCoinID, page_number, total_pages, direction):
         header = "Confirm " + direction + " ({}/{})".format(str(page_number + 1), str(total_pages))
-        coin_page = Text(header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=False)
-        coin_page.normal(ui.GREY, "Idx: ", ui.FG)
-        coin_page.bold(str(coin.idx))
-        coin_page.normal("                         ")
-        coin_page.normal(ui.GREY, "Type: ", ui.FG)
-        coin_page.bold(str(coin.type))
-        coin_page.normal("                         ")
-        coin_page.normal(ui.GREY, "SubIdx: ", ui.FG)
-        coin_page.bold(str(coin.sub_idx))
-        coin_page.normal("                         ")
-        coin_page.normal(ui.GREY, "Amount: ", ui.FG)
-        coin_page.bold(str(coin.amount))
-        coin_page.normal("                         ")
-        coin_page.normal(ui.GREY, "Asset ID: ", ui.FG)
-        coin_page.bold(str(coin.asset_id))
+        coin_page1 = Text(header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
+        coin_page1.normal(ui.GREY, "Idx: ", ui.FG)
+        coin_page1.bold(str(coin.idx))
+        coin_page1.normal(ui.GREY, "Type: ", ui.FG)
+        coin_page1.bold(str(coin.type))
 
-        return coin_page
+        coin_page2 = Text(header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
+        coin_page2.normal(ui.GREY, "SubIdx: ", ui.FG)
+        coin_page2.bold(str(coin.sub_idx))
+        if int(coin.asset_id == 0):
+            coin_page2.normal(ui.GREY, "Amount:", ui.FG)
+            coin_page2.bold(format_amount(coin.amount))
+        else:
+            coin_page2.normal(ui.GREY, "Amount A{}:".format(str(coin.asset_id)), ui.FG)
+            coin_page2.bold(str(coin.amount))
+
+        return [coin_page1, coin_page2]
 
     pages = []
     for (i, txinput) in enumerate(msg.inputs):
-        pages.append(make_input_output_page(txinput, i, len(msg.inputs), "input"))
+        pages.extend(make_input_output_page(txinput, i, len(msg.inputs), "input"))
 
     for (i, txoutput) in enumerate(msg.outputs):
-        pages.append(make_input_output_page(txoutput, i, len(msg.outputs), "output"))
+        pages.extend(make_input_output_page(txoutput, i, len(msg.outputs), "output"))
 
     return await hold_to_confirm(ctx, Paginated(pages), ButtonRequestType.ConfirmOutput)
 
@@ -113,12 +117,15 @@ async def require_confirm_transfer(ctx, msg: BeamTxCommon):
 async def require_confirm_tx_aggr(ctx, header, tx_aggr):
     (_, input_assets, _, _, asset_id) = tx_aggr
 
-    text = Text(header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=False)
-    text.normal(ui.GREY, "Assets: ", ui.FG)
-    text.bold(str(input_assets))
-    text.normal("                         ")
-    text.normal(ui.GREY, "Asset ID: ", ui.FG)
-    text.bold(str(asset_id))
+    text = Text(header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
+    if int(asset_id == 0):
+        text.normal(ui.GREY, "Amount:", ui.FG)
+        text.bold(format_amount(input_assets))
+    else:
+        text.normal(ui.GREY, "Amount:", ui.FG)
+        text.bold(str(input_assets))
+        text.normal(ui.GREY, "Asset ID: ", ui.FG)
+        text.bold(str(asset_id))
 
     return await hold_to_confirm(ctx, text, ButtonRequestType.ConfirmOutput)
 
