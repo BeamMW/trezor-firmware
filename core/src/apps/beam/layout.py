@@ -16,7 +16,7 @@ from apps.wallet.sign_tx.layout import confirm_total
 
 
 def format_amount(value):
-    return "%s BEAM" % utils.format_amount(value, 9)
+    return "%s BEAM" % utils.format_amount(value, 8)
 
 
 async def require_confirm_sign_message(ctx, message, use_split_message=True):
@@ -56,12 +56,17 @@ async def beam_confirm_tx(ctx, spending, fee):
     await confirm_total(ctx, spending, fee, coin)
 
 
-async def beam_ui_display_kernel_info(ctx, header, kernel):
-    page1 = Text(header + " 1/4", ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
+async def beam_ui_display_kernel_info(ctx, header, kernel, display_fee_and_height_only=False):
+    fee_header = header + " 1/4" if not display_fee_and_height_only else header
+    page1 = Text(fee_header, ui.ICON_SEND, icon_color=ui.GREEN, new_lines=True)
     page1.normal(ui.GREY, "Fee: ", ui.FG)
     page1.bold(str(kernel.fee))
     page1.normal(ui.GREY, "Height: ", ui.FG)
     page1.bold("{ " + str(kernel.min_height) + "; " + str(kernel.max_height) + " }")
+
+    if display_fee_and_height_only:
+        await require_confirm(ctx, page1, ButtonRequestType.SignTx)
+        return
 
     page2 = Text(header + " 2/4", ui.ICON_SEND, icon_color=ui.GREEN, new_lines=False)
     page2.normal(ui.GREY, "Commitment x: ", ui.FG)

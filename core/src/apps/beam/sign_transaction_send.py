@@ -14,11 +14,14 @@ from trezor.messages.BeamECCPoint import BeamECCPoint
 from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, require_confirm_transfer, require_confirm_tx_aggr
 from apps.beam.nonce import consume_nonce, get_nonce
 
+from ubinascii import hexlify
+
+
 async def sign_transaction_send(ctx, msg):
     gc.collect()
 
-    # Confirm inputs/outputs
-    await require_confirm_transfer(ctx, msg.tx_common)
+    # TODO: Confirm inputs/outputs optionally
+    #await require_confirm_transfer(ctx, msg.tx_common)
 
     mnemonic = storage.device.get_mnemonic_secret()
     seed = beam.from_mnemonic_beam(mnemonic)
@@ -50,9 +53,9 @@ async def sign_transaction_send(ctx, msg):
     helpers.tm_check_status(transaction_manager, res)
 
     tx_aggr = transaction_manager.get_tx_aggr_coins_info()
-    await beam_confirm_message(ctx, "Confirm peer", msg.tx_mutual_info.peer, use_split_message=True)
+    await beam_confirm_message(ctx, "Confirm peer", "", bold_text=hexlify(msg.tx_mutual_info.peer).decode(),
+                               use_split_message=False)
     await require_confirm_tx_aggr(ctx, "Confirm spending", tx_aggr)
-    await beam_ui_display_kernel_info(ctx, "Confirm send tx", msg.tx_common.kernel_params)
 
     # Part 3
     res = transaction_manager.sign_transaction_send_part_3()
@@ -60,13 +63,19 @@ async def sign_transaction_send(ctx, msg):
     helpers.tm_check_status(transaction_manager, res)
 
     tx_aggr = transaction_manager.get_tx_aggr_coins_info()
-    await require_confirm_tx_aggr(ctx, "Confirm spending", tx_aggr)
-    await beam_ui_display_kernel_info(ctx, "Confirm send tx", msg.tx_common.kernel_params)
+    # TODO: Decide if we should display all kernel params optionally
+    await beam_ui_display_kernel_info(ctx, "Confirm send tx", msg.tx_common.kernel_params,
+                                      display_fee_and_height_only=True)
 
     # Part 4
     res = transaction_manager.sign_transaction_send_part_4()
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SEND, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
+
+    kernel_msg = helpers.tm_get_scalar(transaction_manager,
+                                        transaction_manager.TX_STATE_KERNEL_MSG)
+    await beam_confirm_message(ctx, "Verify Kernel ID", "", bold_text=hexlify(kernel_msg).decode(),
+                               use_split_message=False)
 
     return msg
 

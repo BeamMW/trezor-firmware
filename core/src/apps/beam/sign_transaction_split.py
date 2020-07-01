@@ -15,8 +15,8 @@ from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, 
 async def sign_transaction_split(ctx, msg):
     gc.collect()
 
-    # Confirm inputs/outputs
-    await require_confirm_transfer(ctx, msg.tx_common)
+    # TODO: Confirm inputs/outputs
+    #await require_confirm_transfer(ctx, msg.tx_common)
 
     mnemonic = storage.device.get_mnemonic_secret()
     seed = beam.from_mnemonic_beam(mnemonic)
@@ -29,14 +29,18 @@ async def sign_transaction_split(ctx, msg):
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT)
     helpers.tm_check_status(transaction_manager, res)
 
-    kernel_msg = helpers.tm_get_scalar(transaction_manager,
-                                        transaction_manager.TX_STATE_KERNEL_MSG)
-    await beam_confirm_message(ctx, "Kernel msg: ", kernel_msg, use_split_message=True)
-    await beam_ui_display_kernel_info(ctx, "Confirm split tx", msg.tx_common.kernel_params)
+    # TODO: Decide if we should display kernel params optionally
+    await beam_ui_display_kernel_info(ctx, "Confirm split tx", msg.tx_common.kernel_params,
+                                      display_fee_and_height_only=True)
 
     res = transaction_manager.sign_transaction_split_part_2()
     helpers.tm_update_message(transaction_manager, msg, helpers.MESSAGE_TX_SPLIT, before_response=True)
     helpers.tm_check_status(transaction_manager, res)
+
+    kernel_msg = helpers.tm_get_scalar(transaction_manager,
+                                        transaction_manager.TX_STATE_KERNEL_MSG)
+    await beam_confirm_message(ctx, "Verify Kernel ID", "", bold_text=hexlify(kernel_msg).decode(),
+                               use_split_message=False)
 
     return msg
 
