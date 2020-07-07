@@ -8,7 +8,6 @@ from trezor.messages import MessageType
 
 def boot() -> None:
     # ns = [[CURVE, HARDENED | 44, HARDENED | 1533]]
-    wire.add(MessageType.BeamGenerateNonce, __name__, "generate_nonce")
     wire.add(MessageType.BeamGetNoncePublic, __name__, "get_nonce_public")
     wire.add(MessageType.BeamGenerateRangeproof, __name__, "generate_rangeproof")
     wire.add(MessageType.BeamGetNumSlots, __name__, "get_num_slots")

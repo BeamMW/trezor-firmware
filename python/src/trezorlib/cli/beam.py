@@ -29,20 +29,6 @@ def cli():
     """BEAM commands."""
 
 
-@cli.command(help="Generate a nonce for the given slot and get its public image")
-@click.option(
-    "-n",
-    "--slot",
-    required=True,
-    help="Slot where to nonce should be stored. Value should be in range (0, 255)",
-)
-@click.pass_obj
-def generate_nonce(connect, slot):
-    client = connect()
-
-    return beam.generate_nonce(client, slot)
-
-
 @cli.command(help="Get a public image of the nonce for the given slot")
 @click.option(
     "-n",

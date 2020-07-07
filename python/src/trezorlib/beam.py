@@ -66,11 +66,6 @@ REQUIRED_FIELDS_TRANSACTION_SPLIT = [
 
 
 @expect(messages.BeamECCPoint)
-def generate_nonce(client, slot):
-    return client.call(messages.BeamGenerateNonce(slot=int(slot)))
-
-
-@expect(messages.BeamECCPoint)
 def get_nonce_image(client, slot):
     return client.call(messages.BeamGetNoncePublic(slot=int(slot)))
 
