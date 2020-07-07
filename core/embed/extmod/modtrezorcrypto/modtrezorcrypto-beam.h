@@ -1187,6 +1187,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_export_pkdf_obj, 8, 8,
     mod_trezorcrypto_beam_export_pkdf);
 
+
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_generate_key(size_t n_args,
                                                    const mp_obj_t* args) {
   uint64_t idx = mp_obj_get_uint64_beam(args[0]);

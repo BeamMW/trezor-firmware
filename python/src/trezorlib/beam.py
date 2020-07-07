@@ -65,18 +65,6 @@ REQUIRED_FIELDS_TRANSACTION_SPLIT = [
 ]
 
 
-# DEPRECATED
-@expect(messages.BeamECCPoint)
-def generate_key(client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_coin_key):
-    kidv = messages.BeamKeyIDV(
-        idx=int(kidv_idx),
-        type=int(kidv_type),
-        sub_idx=int(kidv_sub_idx),
-        value=int(kidv_value),
-    )
-    return client.call(messages.BeamGenerateKey(kidv=kidv, is_coin_key=is_coin_key))
-
-
 @expect(messages.BeamECCPoint)
 def generate_nonce(client, slot):
     return client.call(messages.BeamGenerateNonce(slot=int(slot)))

@@ -29,22 +29,6 @@ def cli():
     """BEAM commands."""
 
 
-@cli.command(help="Generate key image for the given KIDV")
-@click.argument("kidv_idx")
-@click.argument("kidv_type")
-@click.argument("kidv_sub_idx")
-@click.argument("kidv_value")
-@click.option("--coin-key", is_flag=True)
-@click.pass_obj
-def beam_generate_key(connect, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, coin_key):
-    client = connect()
-    res = beam.generate_key(
-        client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, coin_key
-    )
-
-    return res
-
-
 @cli.command(help="Generate a nonce for the given slot and get its public image")
 @click.option(
     "-n",
