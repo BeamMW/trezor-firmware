@@ -29,20 +29,6 @@ def cli():
     """BEAM commands."""
 
 
-@cli.command(help="Get a public image of the nonce for the given slot")
-@click.option(
-    "-n",
-    "--slot",
-    required=True,
-    help="Slot where to nonce should be stored. Value should be in range (0, 255)",
-)
-@click.pass_obj
-def get_nonce_image(connect, slot):
-    client = connect()
-
-    return beam.get_nonce_image(client, slot)
-
-
 @cli.command(help="Get number of slots available on the device.")
 @click.option("-d", "--show-display", is_flag=True)
 @click.pass_obj
