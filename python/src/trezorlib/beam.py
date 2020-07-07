@@ -65,11 +65,6 @@ REQUIRED_FIELDS_TRANSACTION_SPLIT = [
 ]
 
 
-@expect(messages.BeamOwnerKey)
-def get_owner_key(client, show_display=True):
-    return client.call(messages.BeamGetOwnerKey(show_display=show_display))
-
-
 # DEPRECATED
 @expect(messages.BeamECCPoint)
 def generate_key(client, kidv_idx, kidv_type, kidv_sub_idx, kidv_value, is_coin_key):

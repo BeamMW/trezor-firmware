@@ -29,17 +29,6 @@ def cli():
     """BEAM commands."""
 
 
-@cli.command(help="Get Beam owner key.")
-@click.option("-d", "--show-display", is_flag=True)
-@click.pass_obj
-def get_owner_key(connect, show_display):
-    client = connect()
-    res = beam.get_owner_key(client, show_display)
-    print("Ok")
-    print("Received message: {}".format(res))
-    return res
-
-
 @cli.command(help="Generate key image for the given KIDV")
 @click.argument("kidv_idx")
 @click.argument("kidv_type")
