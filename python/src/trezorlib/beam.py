@@ -65,18 +65,6 @@ REQUIRED_FIELDS_TRANSACTION_SPLIT = [
 ]
 
 
-# DEPRECATED
-@expect(messages.BeamECCPoint)
-def get_public_key(client, kid_idx, kid_sub_idx, show_display=True):
-    return client.call(
-        messages.BeamGetPublicKey(
-            kid_idx=int(kid_idx),
-            kid_sub_idx=int(kid_sub_idx),
-            show_display=show_display,
-        )
-    )
-
-
 @expect(messages.BeamOwnerKey)
 def get_owner_key(client, show_display=True):
     return client.call(messages.BeamGetOwnerKey(show_display=show_display))

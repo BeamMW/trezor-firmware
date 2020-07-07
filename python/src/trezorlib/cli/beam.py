@@ -29,20 +29,6 @@ def cli():
     """BEAM commands."""
 
 
-@cli.command(help="Get Beam public key.")
-@click.argument("kid-idx")
-@click.argument("kid-sub-idx")
-@click.option("-d", "--show-display", is_flag=True)
-@click.pass_obj
-def beam_get_public_key(connect, kid_idx, kid_sub_idx, show_display):
-    client = connect()
-    print("ololo")
-    res = beam.get_public_key(client, kid_idx, kid_sub_idx, show_display)
-    print("Ok")
-    print("Received message: {}".format(res))
-    return res
-
-
 @cli.command(help="Get Beam owner key.")
 @click.option("-d", "--show-display", is_flag=True)
 @click.pass_obj
