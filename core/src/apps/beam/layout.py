@@ -19,14 +19,6 @@ def format_amount(value):
     return "%s BEAM" % utils.format_amount(value, 8)
 
 
-async def require_validate_sign_message(ctx, message):
-    message = message.split(" ")
-    text = Text("Validate BEAM signature", new_lines=False)
-    text.normal(*message)
-    await require_confirm(ctx, text)
-    return True
-
-
 async def beam_confirm_message(
     ctx, info_message, message, use_split_message=True, code=None, bold_text=None
 ):

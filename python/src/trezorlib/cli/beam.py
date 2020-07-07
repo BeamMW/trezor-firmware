@@ -54,42 +54,6 @@ def get_owner_key(connect, show_display):
     return res
 
 
-@cli.command(help="Sign message with Beam SK.")
-@click.argument("message")
-@click.argument("kid-idx")
-@click.argument("kid-sub-idx")
-@click.option("-d", "--show-display", is_flag=True)
-@click.pass_obj
-def beam_sign_message(connect, message, kid_idx, kid_sub_idx, show_display):
-    client = connect()
-    res = beam.sign_message(client, message, kid_idx, kid_sub_idx, show_display)
-
-    print("Ok")
-    print("Original message: {}".format(message))
-    print("Received message: {}".format(res))
-    return res
-
-
-@cli.command(help="Verify Beam signed message.")
-@click.argument("nonce-pub-x")
-@click.argument("nonce-pub-y")
-@click.argument("sign-k")
-@click.argument("pk-x")
-@click.argument("pk-y")
-@click.argument("message")
-@click.pass_obj
-def beam_verify_message(connect, nonce_pub_x, nonce_pub_y, sign_k, pk_x, pk_y, message):
-    client = connect()
-    res = beam.verify_message(
-        client, nonce_pub_x, nonce_pub_y, sign_k, pk_x, pk_y, message
-    )
-
-    print("Ok")
-    print("Original message: {}".format(message))
-    print("Received message: {}".format(res))
-    return res
-
-
 @cli.command(help="Generate key image for the given KIDV")
 @click.argument("kidv_idx")
 @click.argument("kidv_type")

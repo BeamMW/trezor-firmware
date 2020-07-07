@@ -61,19 +61,6 @@ def get_beam_kdf(mnemonic_phrase=None):
     return (secret_key, cofactor)
 
 
-def is_valid_beam_message(signature, public_key, message):
-    is_valid = beam.is_valid_signature(
-        message,
-        signature.nonce_pub.x,
-        int(signature.nonce_pub.y),
-        signature.sign_k,
-        public_key.x,
-        int(public_key.y),
-    )
-
-    return is_valid
-
-
 def rand_pswd(size=8):
     """Generate a random password of fixed length """
     charset = "12346789ACDEFGHJKLMNPQRTUVWXYabcdefghijkmnopqrstuvwxyz"

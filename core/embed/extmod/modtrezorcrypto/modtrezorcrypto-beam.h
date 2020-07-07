@@ -1089,6 +1089,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(
     mod_trezorcrypto_beam_signature_sign_obj, 5, 5,
     mod_trezorcrypto_beam_signature_sign);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_is_valid_signature(size_t n_args,
                                                          const mp_obj_t* args) {
   mp_buffer_info_t msg32;

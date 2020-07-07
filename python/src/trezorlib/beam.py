@@ -66,45 +66,6 @@ REQUIRED_FIELDS_TRANSACTION_SPLIT = [
 
 
 # DEPRECATED
-@expect(messages.BeamSignature)
-def sign_message(client, message, kid_idx, kid_sub_idx, show_display=True):
-    return client.call(
-        messages.BeamSignMessage(
-            msg=message,
-            kid_idx=int(kid_idx),
-            kid_sub_idx=int(kid_sub_idx),
-            show_display=show_display,
-        )
-    )
-
-
-# DEPRECATED
-def verify_message(client, nonce_pub_x, nonce_pub_y, sign_k, pk_x, pk_y, message):
-    nonce_pub_x = hex_str_to_bytearray(nonce_pub_x, "Nonce X", True)
-    nonce_pub_y = int(nonce_pub_y)
-    sign_k = hex_str_to_bytearray(sign_k, "K", True)
-    pk_x = hex_str_to_bytearray(pk_x, "PK X", True)
-    pk_y = int(pk_y)
-    message = normalize_nfc(message)
-
-    try:
-        signature = messages.BeamSignature(
-            nonce_pub=messages.BeamECCPoint(x=nonce_pub_x, y=nonce_pub_y), sign_k=sign_k
-        )
-        public_key = messages.BeamECCPoint(x=pk_x, y=pk_y)
-        resp = client.call(
-            messages.BeamVerifyMessage(
-                signature=signature, public_key=public_key, message=message
-            )
-        )
-    except CallException as e:
-        resp = e
-    if isinstance(resp, messages.Success):
-        return True
-    return False
-
-
-# DEPRECATED
 @expect(messages.BeamECCPoint)
 def get_public_key(client, kid_idx, kid_sub_idx, show_display=True):
     return client.call(
