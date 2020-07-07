@@ -6,19 +6,6 @@ option java_package = "com.satoshilabs.trezor.lib.protobuf";
 option java_outer_classname = "TrezorMessageBeam";
 
 /**
- * //DEPRECATED
- * Structure representing beam KIDV (Key ID, Value) structure
- * @embed
- */
-message BeamKeyIDV {
-    optional uint64 idx = 1;
-    optional uint32 type = 2;
-    optional uint32 sub_idx = 3;
-
-    optional uint64 value = 4;
-}
-
-/**
  * Structure representing beam CoinID (id, type, subIdx, amount, assetID) structure
  * @embed
  */
@@ -28,36 +15,6 @@ message BeamCoinID {
     optional uint32 sub_idx = 3;
     optional uint64 amount = 4;
     optional uint32 asset_id = 5;
-}
-
-/**
- * Request: Generate key from given KIDV and export it's image
- * @start
- * @next BeamECCPoint
- */
-message BeamGenerateKey {
-    optional BeamKeyIDV kidv = 1;  // KIDV to generate key from
-    optional bool is_coin_key = 2; // specifies, whether we should create either common or coin key
-}
-
-/**
- * Request: Generate nonce for the given slot index
- * @start
- * @next BeamECCPoint
- * @next Failure
- */
-message BeamGenerateNonce {
-    optional uint32 slot = 1; // Slot where generated nonce should be stored
-}
-
-/**
- * Request: Get public key of nonce for the given slot index
- * @start
- * @next BeamECCPoint
- * @next Failure
- */
-message BeamGetNoncePublic {
-    optional uint32 slot = 1; // Slot where generated nonce should be stored
 }
 
 /**
@@ -78,61 +35,6 @@ message BeamECCPoint {
 message BeamSignature {
     optional BeamECCPoint nonce_pub = 1; // Public nonce of the signature
     optional bytes sign_k = 2;           // k part of the signature
-}
-
-/**
- * Request: Send message in human-readable format to sign it's hash according to BEAM rules.
- * @next BeamSignature
- * @next Failure
- * @end
- */
-message BeamSignMessage {
-    optional string msg = 1;         // text in human-readable format that needs to be signed
-    optional uint64 kid_idx = 2;     // KeyIDV idx
-    optional uint32 kid_sub_idx = 3; // KeyIDV sub idx
-    optional bool show_display = 4;  // optionally show on display before sending the result
-}
-
-/**
- * Request: Ask device to verify message
- * @start
- * @next Success
- * @next Failure
- */
-message BeamVerifyMessage {
-    optional BeamSignature signature = 1;   // BEAM message signature
-    optional BeamECCPoint public_key = 2;  // BEAM public key
-    optional bytes message = 3;             // message to verify
-}
-
-/**
- * Request: Ask device for public key
- * @start
- * @next BeamECCPoint
- * @next Failure
- */
-message BeamGetPublicKey {
-    optional uint64 kid_idx = 1;     // KeyIDV idx
-    optional uint32 kid_sub_idx = 2; // KeyIDV sub idx
-    optional bool show_display = 3;  // optionally show on display before sending the result
-}
-
-/**
- * Request: Ask device for an owner key
- * @start
- * @next BeamOwnerKey
- * @next Failure
- */
-message BeamGetOwnerKey {
-    optional bool show_display = 1; // optionally show on display before sending the result
-}
-
-/**
- * Response: Contains owner key from device
- * @end
- */
-message BeamOwnerKey {
-    optional bytes key = 1; // owner key
 }
 
 /**
@@ -158,38 +60,6 @@ message BeamRangeproofData {
     optional bool is_successful = 2; // is rangeproof calculate process was successful
     optional BeamECCPoint pt0 = 3; // point0 of rangeproof data
     optional BeamECCPoint pt1 = 4; // point1 of rangeproof data
-}
-
-/**
- * Response: signature for transaction
- * @end
- */
-message BeamSignedTransaction {
-    optional bytes signature = 1;
-}
-
-/**
- * Request: sign transaction with given inputs, outputs, transaction and kernel parameters
- * @next BeamSignedTransaction
- * @next Failure
- */
-message BeamSignTransaction {
-    repeated BeamKeyIDV inputs = 1; // KIDV inputs
-    optional bytes offset_sk = 2; // Randomly generated offset (scalar)
-    repeated BeamKeyIDV outputs = 3; // KIDV outputs
-    optional uint32 nonce_slot = 4; // nonce slot which should be used
-    optional BeamKernelParametersOld kernel_params = 5; // kernel parameters for challenge
-
-    message BeamKernelParametersOld {
-        optional uint64 fee = 1;
-        optional BeamECCPoint commitment = 2;
-        optional uint64 min_height = 4;
-        optional uint64 max_height = 5;
-        optional sint64 asset_emission = 6;
-        optional bytes hash_lock = 7;
-        optional BeamECCPoint multisig_nonce = 8;
-        optional BeamECCPoint multisig_excess = 9;
-    }
 }
 
 /**
