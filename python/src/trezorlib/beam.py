@@ -153,28 +153,6 @@ def sign_tx_split(
     )
     return response
 
-# DEPRECATED
-@session
-@expect(messages.BeamSignedTransaction)
-def sign_tx(
-    client,
-    inputs: List[messages.BeamKeyIDV],
-    outputs: List[messages.BeamKeyIDV],
-    offset_sk,
-    nonce_slot,
-    kernel_params,
-):
-    response = client.call(
-        messages.BeamSignTransaction(
-            inputs=inputs,
-            outputs=outputs,
-            offset_sk=hex_str_to_bytearray(offset_sk),
-            nonce_slot=int(nonce_slot),
-            kernel_params=kernel_params,
-        )
-    )
-    return response
-
 
 def _check_required_fields(data, required_fields, error_message):
     missing_fields = [field for field in required_fields if field not in data.keys()]

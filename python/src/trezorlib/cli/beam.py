@@ -165,35 +165,3 @@ def sign_tx_split(connect, file):
     )
 
     return signed_transaction
-
-
-@cli.command(help="Sign Beam transaction.")
-@click.option(
-    "-f",
-    "--file",
-    type=click.File("r"),
-    required=True,
-    help="Transaction in JSON format",
-)
-@click.pass_obj
-def beam_sign_tx_old(connect, file):
-    client = connect()
-
-    transaction = json.load(file)
-    beam.check_transaction_data(transaction)
-
-    inputs = [beam.create_kidv(input) for input in transaction["inputs"]]
-    outputs = [beam.create_kidv(output) for output in transaction["outputs"]]
-
-    kernel_params = beam.create_kernel_params(transaction["kernel_parameters"])
-
-    signed_transaction = beam.sign_tx(
-        client,
-        inputs,
-        outputs,
-        transaction["offset_sk"],
-        transaction["nonce_slot"],
-        kernel_params,
-    )
-
-    return signed_transaction
