@@ -27,10 +27,6 @@ STATUS_WRONG_USERAGREEMENT_TOKEN = const(9)
 STATUS_WRONG_PAYMENTPROOF_SIGNATURE = const(10)
 
 
-def BBS_KEY():
-    return 1113748301
-
-
 def beam_app_id():
     return 19
 
@@ -63,35 +59,6 @@ def get_beam_kdf(mnemonic_phrase=None):
     cofactor = bytearray(32)
     beam.seed_to_kdf(seed, seed_size, secret_key, cofactor)
     return (secret_key, cofactor)
-
-
-def get_beam_sk(kid_idx, kid_sub_idx=0, kdf=None):
-    # Generate hash id
-    kid_type = BBS_KEY()
-    hash_id = bytearray(32)
-    beam.generate_hash_id(kid_idx, kid_type, kid_sub_idx, hash_id)
-
-    if kdf is None:
-        # Get kdf
-        secret_key, cofactor = get_beam_kdf()
-    else:
-        secret_key, cofactor = kdf
-
-    # Derive key
-    res_sk = bytearray(32)
-    beam.derive_child_key(secret_key, 32, hash_id, 32, cofactor, res_sk)
-
-    return res_sk
-
-
-def get_beam_pk(kid_idx, kid_sub_idx=0, kdf=None):
-    # Secret key to public key
-    public_key_x = bytearray(32)
-    public_key_y = bytearray(1)
-    sk = get_beam_sk(kid_idx, kid_sub_idx, kdf)
-    beam.secret_key_to_public_key(sk, public_key_x, public_key_y)
-
-    return (public_key_x, int(public_key_y[0]))
 
 
 def is_valid_beam_message(signature, public_key, message):

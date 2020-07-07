@@ -1049,6 +1049,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(
     mod_trezorcrypto_beam_secret_key_to_public_key_obj,
     mod_trezorcrypto_beam_secret_key_to_public_key);
 
+// DEPRECATED
 STATIC mp_obj_t mod_trezorcrypto_beam_signature_sign(size_t n_args,
                                                      const mp_obj_t* args) {
   mp_buffer_info_t msg32;
