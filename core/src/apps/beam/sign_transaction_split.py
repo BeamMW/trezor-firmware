@@ -11,6 +11,8 @@ from trezor.messages.BeamECCPoint import BeamECCPoint
 
 from apps.beam.layout import beam_confirm_message, beam_ui_display_kernel_info, require_confirm_transfer
 
+from ubinascii import hexlify
+
 
 async def sign_transaction_split(ctx, msg):
     gc.collect()
