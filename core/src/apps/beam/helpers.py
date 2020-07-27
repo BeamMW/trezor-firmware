@@ -46,21 +46,6 @@ def get_beam_seed(mnemonic_phrase=None):
     return seed
 
 
-def get_beam_kdf(mnemonic_phrase=None):
-    if not storage.is_initialized():
-        raise wire.NotInitialized("Device is not initialized")
-
-    if mnemonic_phrase is None:
-        # Get kdf
-        mnemonic_phrase = mnemonic.get_secret()
-    seed = beam.from_mnemonic_beam(mnemonic_phrase)
-    seed_size = 32
-    secret_key = bytearray(32)
-    cofactor = bytearray(32)
-    beam.seed_to_kdf(seed, seed_size, secret_key, cofactor)
-    return (secret_key, cofactor)
-
-
 def rand_pswd(size=8):
     """Generate a random password of fixed length """
     charset = "12346789ACDEFGHJKLMNPQRTUVWXYabcdefghijkmnopqrstuvwxyz"

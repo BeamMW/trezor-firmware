@@ -47,13 +47,6 @@ def create_nonce(idx):
     return None, None
 
 
-def calc_nonce_pub(nonce):
-    out_nonce_pub_x = bytearray(32)
-    out_nonce_pub_y = bytearray(1)
-    beam.get_nonce_public_key(nonce, out_nonce_pub_x, out_nonce_pub_y)
-    return (out_nonce_pub_x, out_nonce_pub_y)
-
-
 def consume_nonce(idx):
     idx = __get_nonce_idx(idx)
     old_nonce, _ = create_nonce(idx)
@@ -66,11 +59,3 @@ def get_nonce(idx):
         nonce = config.get(beam_app_id(), idx)
         return nonce
     return None
-
-
-def get_nonce_pub(idx):
-    idx = __get_nonce_idx(idx)
-    if is_valid_nonce_slot(idx):
-        nonce = config.get(beam_app_id(), idx)
-        return calc_nonce_pub(nonce)
-    return None, None
